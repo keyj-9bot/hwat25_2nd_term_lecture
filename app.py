@@ -12,8 +12,13 @@ import os
 from datetime import datetime
 from functools import wraps
 
-app = Flask(__name__)
+# ✅ Render 경로 문제 방지용 절대경로 지정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
+app = Flask(__name__, template_folder=TEMPLATES_DIR)
 app.secret_key = os.getenv("SECRET_KEY", "key_flask_secret")
+
 
 # ─────────────────────────────
 # 📁 파일 경로
