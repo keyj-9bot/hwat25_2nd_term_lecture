@@ -1,5 +1,3 @@
-
-
 # -*- coding: utf-8 -*-
 """
 📘 연암공대 화공트랙 강의자료 + Q&A (교수 답변 수정 기능 포함)
@@ -20,12 +18,10 @@ QNA_FILE = "lecture_qna.csv"
 PROFESSOR_PASSWORD = "5555"
 
 
-# ✅ Render Health Check용 루트 라우트 추가
-@app.route("/")
-def home():
+# ✅ Render Health Check용 별도 라우트 (중복 방지)
+@app.route("/health")
+def health_check():
     return "✅ Flask app deployed successfully on Render!"
-
-
 
 
 # ─────────────────────────────
@@ -39,8 +35,10 @@ def load_data():
             return []
     return []
 
+
 def save_data(data):
     pd.DataFrame(data).to_csv(DATA_FILE, index=False, encoding="utf-8-sig")
+
 
 def load_qna():
     if not os.path.exists(QNA_FILE):
@@ -49,8 +47,10 @@ def load_qna():
         )
     return pd.read_csv(QNA_FILE, dtype=str).fillna("")
 
+
 def save_qna(df):
     df.to_csv(QNA_FILE, index=False, encoding="utf-8-sig")
+
 
 # ─────────────────────────────
 # 📘 강의자료 + Q&A 게시판
@@ -147,6 +147,8 @@ def lecture_list():
         temp_reply=temp_reply,
     )
 
+
+# ✅ 기본 홈페이지 (index.html 렌더링)
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -184,24 +186,22 @@ def lecture_upload():
 
     return render_template("lecture_upload.html", data=data)
 
+
 # ─────────────────────────────
 # 📘 강의자료 업로드 (upload_lecture.html 렌더링)
 # ─────────────────────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    data = load_data()  # 기존 lecture_data.csv 로드
+    data = load_data()
     edit_index = request.args.get("edit")
     edit_data = None
 
-    # ✅ 수정 모드: 기존 데이터 가져오기
     if edit_index is not None and edit_index.isdigit():
         idx = int(edit_index)
         if 0 <= idx < len(data):
             edit_data = data[idx]
 
-    # ✅ 신규 업로드 또는 수정
     if request.method == "POST":
-        # 삭제 처리
         delete_row = request.form.get("delete_row")
         if delete_row is not None:
             idx = int(delete_row)
@@ -211,11 +211,9 @@ def upload_lecture():
                 flash("🗑️ 자료가 삭제되었습니다.", "info")
                 return redirect(url_for("upload_lecture"))
 
-        # 새로 업로드 또는 수정 저장
         topic = request.form.get("topic", "").strip()
         notes = request.form.get("notes", "").strip()
 
-        # 입력된 파일/사이트 값 수집
         file_urls = []
         related_sites = []
         for key in request.form:
@@ -235,7 +233,6 @@ def upload_lecture():
             "업로드시각": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
-        # 수정 모드
         if "edit_index" in request.form:
             idx = int(request.form["edit_index"])
             if 0 <= idx < len(data):
@@ -249,7 +246,6 @@ def upload_lecture():
         return redirect(url_for("upload_lecture"))
 
     return render_template("upload_lecture.html", data=data, edit_data=edit_data)
-
 
 
 if __name__ == "__main__":
