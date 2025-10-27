@@ -33,7 +33,9 @@ def health_check():
 def login():
     # 절대경로로 allowed_emails.txt 읽기
     if not os.path.exists(ALLOWED_EMAILS_FILE):
-        return ⚠️ allowed_emails.txt 파일이 서버에 없습니다.", 500
+        return "⚠️ allowed_emails.txt 파일이 서버에 없습니다.", 500
+
+
 
     with open(ALLOWED_EMAILS_FILE, "r", encoding="utf-8-sig") as f:
         allowed_emails = [line.strip().lower() for line in f if line.strip()]
