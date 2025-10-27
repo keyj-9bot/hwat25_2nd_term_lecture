@@ -19,6 +19,15 @@ DATA_FILE = "lecture_data.csv"
 QNA_FILE = "lecture_qna.csv"
 PROFESSOR_PASSWORD = "5555"
 
+
+# ✅ Render Health Check용 루트 라우트 추가
+@app.route("/")
+def home():
+    return "✅ Flask app deployed successfully on Render!"
+
+
+
+
 # ─────────────────────────────
 # 📂 데이터 로드/저장
 # ─────────────────────────────
