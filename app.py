@@ -3,6 +3,7 @@
 📘 연암공대 화공트랙 강의자료 + Q&A (교수 답변 수정 기능 포함)
 - 학생: 자기 비밀번호(4자리)로 질문 삭제 가능
 - 교수: 비밀번호 기본값 5555 (변경 가능)
+- Render 배포 안정화용 포트 자동 설정 및 Health Check 포함
 """
 
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -11,21 +12,26 @@ import os
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "key_flask_secret"
+app.secret_key = os.environ.get("SECRET_KEY", "key_flask_secret")
 
-DATA_FILE = "lecture_data.csv"
-QNA_FILE = "lecture_qna.csv"
-PROFESSOR_PASSWORD = "5555"
+# ─────────────────────────────
+# 📁 파일 경로 설정
+# ─────────────────────────────
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "lecture_data.csv")
+QNA_FILE = os.path.join(BASE_DIR, "lecture_qna.csv")
+PROFESSOR_PASSWORD = os.environ.get("PROFESSOR_PASSWORD", "5555")
 
-
-# ✅ Render Health Check용 (중복 방지)
+# ─────────────────────────────
+# ✅ Render Health Check
+# ─────────────────────────────
 @app.route("/health")
 def health_check():
     return "OK", 200
 
 
 # ─────────────────────────────
-# 📂 데이터 로드/저장
+# 📂 데이터 로드 / 저장
 # ─────────────────────────────
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -104,7 +110,7 @@ def lecture_list():
                     flash("비밀번호가 일치하지 않습니다.", "danger")
             return redirect(url_for("lecture_list"))
 
-        # 👨‍🏫 교수 답변 등록 / 수정 (통합)
+        # 👨‍🏫 교수 답변 등록 / 수정
         elif action == "reply_qna":
             index = int(request.form.get("index", -1))
             reply = request.form.get("reply", "").strip()
@@ -148,7 +154,9 @@ def lecture_list():
     )
 
 
-# ✅ 기본 홈페이지 (index.html 렌더링)
+# ─────────────────────────────
+# 🏠 기본 홈페이지
+# ─────────────────────────────
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -188,7 +196,7 @@ def lecture_upload():
 
 
 # ─────────────────────────────
-# 📘 강의자료 업로드 (upload_lecture.html 렌더링)
+# 📘 강의자료 수정 / 삭제
 # ─────────────────────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
@@ -217,9 +225,9 @@ def upload_lecture():
         file_urls = []
         related_sites = []
         for key in request.form:
-            if key == "file_upload" or key.startswith("file_upload"):
+            if key.startswith("file_upload"):
                 file_urls.append(request.form[key])
-            if key == "related_site" or key.startswith("related_site"):
+            if key.startswith("related_site"):
                 related_sites.append(request.form[key])
 
         file_urls = ";".join([f for f in file_urls if f.strip()])
@@ -248,5 +256,9 @@ def upload_lecture():
     return render_template("upload_lecture.html", data=data, edit_data=edit_data)
 
 
+# ─────────────────────────────
+# 🚀 Render 실행 포트 자동 설정
+# ─────────────────────────────
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=False)
