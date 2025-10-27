@@ -1,0 +1,33 @@
+
+
+{% extends "base.html" %}
+{% block title %}🎓 Q&A 관리{% endblock %}
+{% block content %}
+<h2>🎓 교수 전용 Q&A 관리</h2>
+
+<table>
+  <tr><th>번호</th><th>이메일</th><th>질문</th><th>답변</th><th>등록시간</th><th>답변등록</th><th>삭제</th></tr>
+  {% for row in data %}
+  <tr>
+    <td>{{ loop.index }}</td>
+    <td>{{ row['이메일'] }}</td>
+    <td>{{ row['질문'] }}</td>
+    <td>{{ row['답변'] }}</td>
+    <td>{{ row['등록시간'] }}</td>
+    <td>
+      <form method="POST">
+        <input type="hidden" name="row" value="{{ loop.index0 }}">
+        <textarea name="answer" placeholder="답변 입력"></textarea>
+        <button type="submit">등록</button>
+      </form>
+    </td>
+    <td>
+      <form method="POST" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+        <input type="hidden" name="delete_row" value="{{ loop.index }}">
+        <button type="submit" class="delete">삭제</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

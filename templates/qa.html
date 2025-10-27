@@ -1,0 +1,38 @@
+
+
+{% extends "base.html" %}
+{% block title %}💬 학습 Q&A{% endblock %}
+{% block content %}
+<h2>💬 학습 Q&A</h2>
+<p>궁금한 점이 있다면 아래에 질문을 등록하세요.</p>
+
+<form method="POST">
+  <textarea name="question" rows="3" placeholder="질문을 입력하세요" required></textarea>
+  <button type="submit">질문 등록</button>
+</form>
+
+{% if message %}
+<p class="message">{{ message }}</p>
+{% endif %}
+
+<h3>📖 등록된 질문 목록</h3>
+<table>
+  <tr><th>번호</th><th>이메일</th><th>질문</th><th>답변</th><th>삭제</th></tr>
+  {% for row in data %}
+  <tr>
+    <td>{{ loop.index }}</td>
+    <td>{{ row['이메일'] }}</td>
+    <td>{{ row['질문'] }}</td>
+    <td>{{ row['답변'] }}</td>
+    <td>
+      {% if row['이메일'] == email %}
+      <form method="POST">
+        <input type="hidden" name="delete_row" value="{{ loop.index0 }}">
+        <button type="submit" class="delete">삭제</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

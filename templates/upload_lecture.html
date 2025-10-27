@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h4>📘 강의자료 업로드</h4>
+  <p>교수님은 강의자료를 업로드·수정·삭제할 수 있습니다.</p>
+
+  <!-- 업로드 폼 -->
+  <form method="POST" enctype="multipart/form-data" class="mt-3" id="uploadForm">
+
+    <!-- ① 내용 -->
+    <div class="mb-3">
+      <label for="topic" class="form-label">① 내용(Topic)</label>
+      <input type="text" name="topic" id="topic" class="form-control"
+             value="{{ edit_data['내용(Topic)'] if edit_data else '' }}" required>
+    </div>
+
+    <!-- ② 자료파일 업로드 -->
+    <div class="mb-3">
+      <label class="form-label">② 자료파일 업로드 (PDF, PPT, DOCX, HWP 등)</label>
+      <div id="file_inputs"></div>
+      <small class="text-muted">파일을 선택하면 파일명이 표시되고, 추가·삭제 버튼으로 조정할 수 있습니다.</small>
+
+      {% if edit_data and edit_data["자료파일(File URL)"] != "-" %}
+      <div class="form-text mt-3">
+        <b>📂 기존 파일:</b><br>
+        {% for f in edit_data["자료파일(File URL)"].split(";") if f.strip() %}
+        <div class="d-flex align-items-center mb-1">
+          <a href="{{ f.strip() }}" target="_blank" class="me-2">{{ f.strip().split('/')[-1] }}</a>
+          <input type="checkbox" name="delete_existing_file" value="{{ f.strip() }}"> 삭제
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ③ 연관 사이트 -->
+    <div class="mb-3">
+      <label class="form-label">③ 연관 사이트 (Google Drive, 뉴스 등)</label>
+      <div id="site_inputs"></div>
+      <small class="text-muted">사이트 주소 입력 후 Enter 또는 추가 버튼으로 새 칸을 생성할 수 있습니다.</small>
+
+      {% if edit_data and edit_data["연관사이트(Related Site)"] != "-" %}
+      <div class="form-text mt-3">
+        <b>🌐 기존 사이트:</b><br>
+        {% for s in edit_data["연관사이트(Related Site)"].split(";") if s.strip() %}
+        <div class="d-flex align-items-center mb-1">
+          <a href="{{ s.strip() }}" target="_blank" class="me-2">{{ s.strip() }}</a>
+          <input type="checkbox" name="delete_existing_site" value="{{ s.strip() }}"> 삭제
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ④ 비고 -->
+    <div class="mb-3">
+      <label for="notes" class="form-label">④ 비고(Notes)</label>
+      <input type="text" name="notes" id="notes" class="form-control"
+             value="{{ edit_data['비고(Notes)'] if edit_data else '' }}">
+    </div>
+
+    <!-- 버튼 -->
+    {% if edit_data %}
+      <input type="hidden" name="edit_index" value="{{ request.args.get('edit') }}">
+      <button type="submit" class="btn btn-primary">✏️ 수정 완료</button>
+      <a href="{{ url_for('upload_lecture') }}" class="btn btn-secondary ms-2">취소</a>
+    {% else %}
+      <button type="submit" class="btn btn-success">📤 새 자료 업로드</button>
+    {% endif %}
+  </form>
+
+  <hr>
+
+  <!-- 업로드된 목록 -->
+  <h5>📂 업로드된 강의자료</h5>
+  <table class="table table-bordered mt-3 text-center align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>번호</th>
+        <th>내용</th>
+        <th>자료파일</th>
+        <th>연관사이트</th>
+        <th>비고</th>
+        <th>업로드시각</th>
+        <th>수정</th>
+        <th>삭제</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if data %}
+        {% for row in data %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ row["내용(Topic)"] }}</td>
+          <td>
+            {% if row["자료파일(File URL)"] != "-" %}
+              {% for f in row["자료파일(File URL)"].split(";") if f.strip() %}
+                <a href="{{ f.strip() }}" target="_blank">📎 {{ f.strip().split('/')[-1] }}</a><br>
+              {% endfor %}
+            {% else %}-{% endif %}
+          </td>
+          <td>
+            {% if row["연관사이트(Related Site)"] != "-" %}
+              {% for s in row["연관사이트(Related Site)"].split(";") if s.strip() %}
+                <a href="{{ s.strip() }}" target="_blank">🌐 사이트 열기</a><br>
+              {% endfor %}
+            {% else %}-{% endif %}
+          </td>
+          <td>{{ row["비고(Notes)"] }}</td>
+          <td>{{ row["업로드시각"] }}</td>
+          <td><a href="{{ url_for('upload_lecture') }}?edit={{ loop.index0 }}" class="btn btn-sm btn-primary">수정</a></td>
+          <td>
+            <form method="POST" style="display:inline;">
+              <input type="hidden" name="delete_row" value="{{ loop.index0 }}">
+              <button type="submit" class="btn btn-sm btn-danger">삭제</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="8">등록된 강의자료가 없습니다.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ✅ JavaScript -->
+
+<script>
+// 🌟 부드러운 전환 효과용 CSS 삽입
+const style = document.createElement("style");
+style.textContent = `
+  .fade-in {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: all 0.2s ease-in-out;
+  }
+  .fade-in.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .file-row:hover, .site-row:hover {
+    background-color: #f9fafc;
+    border-radius: 8px;
+  }
+  .file-name-label {
+    font-weight: 500;
+    color: #0d6efd;
+  }
+`;
+document.head.appendChild(style);
+
+// ────────────────────────────────
+// 📁 파일 업로드: 부드러운 추가/삭제 + 파일명 표시
+// ────────────────────────────────
+function handleFileSelect(input) {
+  const parent = input.parentElement;
+  const existingLabel = parent.querySelector(".file-name-label");
+  if (existingLabel) existingLabel.remove();
+
+  if (input.files.length > 0) {
+    const file = input.files[0];
+    const label = document.createElement("span");
+    label.textContent = "📎 " + file.name;
+    label.className = "file-name-label ms-2 me-2";
+    input.after(label);
+
+    // 자동으로 다음 추가 칸 생성
+    const container = document.getElementById("file_inputs");
+    const rows = container.querySelectorAll(".file-row");
+    if (parent === rows[rows.length - 1]) {
+      addNewFileInput(true);
+    }
+  }
+}
+
+function addNewFileInput(focus = false) {
+  const container = document.getElementById("file_inputs");
+  const div = document.createElement("div");
+  div.className = "d-flex align-items-center mb-2 file-row fade-in";
+  div.innerHTML = `
+    <input type="file" name="file_upload"
+           accept=".pdf,.ppt,.pptx,.docx,.hwp"
+           class="form-control me-2 file-input"
+           onchange="handleFileSelect(this)">
+    <button type="button" class="btn btn-outline-primary btn-sm me-1"
+            onclick="addNewFileInput(true)">＋ 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm"
+            onclick="removeFileInput(this)">🗑 삭제</button>
+  `;
+  container.appendChild(div);
+  setTimeout(() => div.classList.add("show"), 10);
+  if (focus) div.querySelector("input").focus();
+}
+
+function removeFileInput(btn) {
+  const div = btn.parentElement;
+  div.classList.remove("show");
+  setTimeout(() => {
+    div.remove();
+    ensureAtLeastOneFileInput();
+  }, 180);
+}
+
+function ensureAtLeastOneFileInput() {
+  const container = document.getElementById("file_inputs");
+  if (container.children.length === 0) addNewFileInput();
+}
+
+
+// ────────────────────────────────
+// 🌐 사이트 입력: 자동 추가 + 포커스 이동 + 부드러운 삭제
+// ────────────────────────────────
+function handleSiteInput(input) {
+  if (input.value.trim() !== "") {
+    const container = document.getElementById("site_inputs");
+    const allInputs = container.querySelectorAll(".site-input");
+    const lastInput = allInputs[allInputs.length - 1];
+    if (input === lastInput) {
+      addNewSiteInput(true);
+    }
+  }
+}
+
+function addNewSiteInput(focus = false) {
+  const container = document.getElementById("site_inputs");
+  const div = document.createElement("div");
+  div.className = "d-flex align-items-center mb-2 site-row fade-in";
+  div.innerHTML = `
+    <input type="url" name="related_site"
+           placeholder="https://example.com"
+           class="form-control me-2 site-input"
+           onchange="handleSiteInput(this)"
+           onkeydown="handleSiteEnter(event, this)">
+    <button type="button" class="btn btn-outline-primary btn-sm me-1"
+            onclick="addNewSiteInput(true)">＋ 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm"
+            onclick="removeSiteInput(this)">🗑 삭제</button>
+  `;
+  container.appendChild(div);
+  setTimeout(() => div.classList.add("show"), 10);
+  if (focus) div.querySelector("input").focus();
+}
+
+// 🔸 새로 추가되는 함수: Enter 키를 눌렀을 때 submit 방지 + 다음 칸 추가
+function handleSiteEnter(event, input) {
+  if (event.key === "Enter") {
+    event.preventDefault();  // ✅ 기본 submit 차단
+    handleSiteInput(input);  // ✅ 다음 입력칸 추가
+    // 다음 칸으로 포커스 이동
+    const container = document.getElementById("site_inputs");
+    const allInputs = container.querySelectorAll(".site-input");
+    const lastInput = allInputs[allInputs.length - 1];
+    lastInput.focus();
+  }
+}
+
+
+function removeSiteInput(btn) {
+  const div = btn.parentElement;
+  div.classList.remove("show");
+  setTimeout(() => {
+    div.remove();
+    ensureAtLeastOneSiteInput();
+  }, 180);
+}
+
+function ensureAtLeastOneSiteInput() {
+  const container = document.getElementById("site_inputs");
+  if (container.children.length === 0) addNewSiteInput();
+}
+
+
+// ────────────────────────────────
+// 🌍 초기 세팅
+// ────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  ensureAtLeastOneFileInput();
+  ensureAtLeastOneSiteInput();
+});
+</script>
+
+
+
+
+
+{% endblock %}
