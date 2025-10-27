@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 """
 📘 연암공대 화공트랙 강의자료 + Q&A + 로그인 시스템 (allowed_emails.txt 기반)
@@ -25,6 +24,7 @@ PROFESSOR_PASSWORD = os.getenv("PROFESSOR_PASSWORD", "5555")
 @app.route("/health")
 def health_check():
     return "OK", 200
+
 
 # ─────────────────────────────
 # 📂 파일 로드/저장
@@ -56,6 +56,7 @@ def load_allowed_emails():
             return [line.strip().lower() for line in f if line.strip()]
     return []
 
+
 # ─────────────────────────────
 # 🔐 로그인 시스템
 # ─────────────────────────────
@@ -68,25 +69,33 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    allowed_emails = load_allowed_emails()
+
+    # allowed_emails.txt가 비어있거나 없을 경우 경고 표시
+    if not allowed_emails:
+        flash("⚠️ allowed_emails.txt 파일이 비어 있거나 존재하지 않습니다.", "danger")
+
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
-        allowed_emails = load_allowed_emails()
-
         if email in allowed_emails:
             session["user"] = email
             flash(f"{email} 님 환영합니다!", "success")
             return redirect(url_for("lecture_list"))
         else:
-            flash("허용되지 않은 이메일 주소입니다.", "danger")
+            flash("❌ 허용되지 않은 이메일 주소입니다.", "danger")
+
     return render_template("login.html")
+
 
 @app.route("/logout")
 def logout():
     session.pop("user", None)
-    flash("로그아웃되었습니다.", "info")
+    flash("👋 로그아웃되었습니다.", "info")
     return redirect(url_for("login"))
+
 
 # ─────────────────────────────
 # 📘 강의자료 + Q&A 게시판
@@ -184,6 +193,7 @@ def lecture_list():
         temp_reply=temp_reply,
     )
 
+
 # ─────────────────────────────
 # 📤 강의자료 업로드
 # ─────────────────────────────
@@ -216,6 +226,7 @@ def lecture_upload():
         return redirect(url_for("lecture_list"))
 
     return render_template("lecture_upload.html", data=data)
+
 
 # ─────────────────────────────
 # 📘 자료 수정/삭제 페이지
@@ -278,10 +289,12 @@ def upload_lecture():
 
     return render_template("upload_lecture.html", data=data, edit_data=edit_data)
 
+
 # ✅ 기본 홈페이지 → 로그인으로 리디렉션
 @app.route("/")
 def home():
     return redirect(url_for("login"))
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
