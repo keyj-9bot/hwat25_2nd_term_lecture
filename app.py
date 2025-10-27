@@ -1,37 +1,33 @@
+
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화공트랙 강의자료 + Q&A (교수 답변 수정 기능 포함)
-- 학생: 자기 비밀번호(4자리)로 질문 삭제 가능
-- 교수: 비밀번호 기본값 5555 (변경 가능)
-- Render 배포 안정화용 포트 자동 설정 및 Health Check 포함
+📘 연암공대 화공트랙 강의자료 + Q&A + 로그인 시스템 (allowed_emails.txt 기반)
+- 학생/교수: allowed_emails.txt 내 이메일이면 로그인 가능
+- 로그인하지 않으면 내부 페이지 접근 불가
+- 세션 기반 로그인 (Render 호환)
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import pandas as pd
 import os
 from datetime import datetime
+from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "key_flask_secret")
+app.secret_key = os.getenv("SECRET_KEY", "key_flask_secret")
 
-# ─────────────────────────────
-# 📁 파일 경로 설정
-# ─────────────────────────────
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, "lecture_data.csv")
-QNA_FILE = os.path.join(BASE_DIR, "lecture_qna.csv")
-PROFESSOR_PASSWORD = os.environ.get("PROFESSOR_PASSWORD", "5555")
+DATA_FILE = "lecture_data.csv"
+QNA_FILE = "lecture_qna.csv"
+ALLOWED_EMAILS_FILE = "allowed_emails.txt"
+PROFESSOR_PASSWORD = os.getenv("PROFESSOR_PASSWORD", "5555")
 
-# ─────────────────────────────
-# ✅ Render Health Check
-# ─────────────────────────────
+# ✅ Render Health Check용
 @app.route("/health")
 def health_check():
     return "OK", 200
 
-
 # ─────────────────────────────
-# 📂 데이터 로드 / 저장
+# 📂 파일 로드/저장
 # ─────────────────────────────
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -41,10 +37,8 @@ def load_data():
             return []
     return []
 
-
 def save_data(data):
     pd.DataFrame(data).to_csv(DATA_FILE, index=False, encoding="utf-8-sig")
-
 
 def load_qna():
     if not os.path.exists(QNA_FILE):
@@ -53,15 +47,52 @@ def load_qna():
         )
     return pd.read_csv(QNA_FILE, dtype=str).fillna("")
 
-
 def save_qna(df):
     df.to_csv(QNA_FILE, index=False, encoding="utf-8-sig")
 
+def load_allowed_emails():
+    if os.path.exists(ALLOWED_EMAILS_FILE):
+        with open(ALLOWED_EMAILS_FILE, "r", encoding="utf-8") as f:
+            return [line.strip().lower() for line in f if line.strip()]
+    return []
+
+# ─────────────────────────────
+# 🔐 로그인 시스템
+# ─────────────────────────────
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user" not in session:
+            flash("로그인이 필요합니다.", "warning")
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        allowed_emails = load_allowed_emails()
+
+        if email in allowed_emails:
+            session["user"] = email
+            flash(f"{email} 님 환영합니다!", "success")
+            return redirect(url_for("lecture_list"))
+        else:
+            flash("허용되지 않은 이메일 주소입니다.", "danger")
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    flash("로그아웃되었습니다.", "info")
+    return redirect(url_for("login"))
 
 # ─────────────────────────────
 # 📘 강의자료 + Q&A 게시판
 # ─────────────────────────────
 @app.route("/lecture", methods=["GET", "POST"])
+@login_required
 def lecture_list():
     data = load_data()
     qna_df = load_qna()
@@ -71,7 +102,7 @@ def lecture_list():
     if request.method == "POST":
         action = request.form.get("action")
 
-        # 🧑‍🎓 학생 질문 등록
+        # 🧑‍🎓 질문 등록
         if action == "add_qna":
             name = request.form.get("name", "").strip() or "익명"
             question = request.form.get("question", "").strip()
@@ -97,7 +128,7 @@ def lecture_list():
             flash("질문이 등록되었습니다.", "success")
             return redirect(url_for("lecture_list"))
 
-        # 🧑‍🎓 학생 질문 삭제
+        # 🧑‍🎓 질문 삭제
         elif action == "delete_qna":
             index = int(request.form.get("index", -1))
             password = request.form.get("password", "").strip()
@@ -110,7 +141,7 @@ def lecture_list():
                     flash("비밀번호가 일치하지 않습니다.", "danger")
             return redirect(url_for("lecture_list"))
 
-        # 👨‍🏫 교수 답변 등록 / 수정
+        # 👨‍🏫 교수 답변 등록/수정
         elif action == "reply_qna":
             index = int(request.form.get("index", -1))
             reply = request.form.get("reply", "").strip()
@@ -153,19 +184,11 @@ def lecture_list():
         temp_reply=temp_reply,
     )
 
-
 # ─────────────────────────────
-# 🏠 기본 홈페이지
-# ─────────────────────────────
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-
-# ─────────────────────────────
-# 📤 강의자료 업로드 페이지
+# 📤 강의자료 업로드
 # ─────────────────────────────
 @app.route("/lecture_upload", methods=["GET", "POST"])
+@login_required
 def lecture_upload():
     data = load_data()
 
@@ -194,11 +217,11 @@ def lecture_upload():
 
     return render_template("lecture_upload.html", data=data)
 
-
 # ─────────────────────────────
-# 📘 강의자료 수정 / 삭제
+# 📘 자료 수정/삭제 페이지
 # ─────────────────────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
+@login_required
 def upload_lecture():
     data = load_data()
     edit_index = request.args.get("edit")
@@ -255,10 +278,10 @@ def upload_lecture():
 
     return render_template("upload_lecture.html", data=data, edit_data=edit_data)
 
+# ✅ 기본 홈페이지 → 로그인으로 리디렉션
+@app.route("/")
+def home():
+    return redirect(url_for("login"))
 
-# ─────────────────────────────
-# 🚀 Render 실행 포트 자동 설정
-# ─────────────────────────────
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=10000, debug=True)
