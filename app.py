@@ -18,10 +18,10 @@ QNA_FILE = "lecture_qna.csv"
 PROFESSOR_PASSWORD = "5555"
 
 
-# ✅ Render Health Check용 별도 라우트 (중복 방지)
+# ✅ Render Health Check용 (중복 방지)
 @app.route("/health")
 def health_check():
-    return "✅ Flask app deployed successfully on Render!"
+    return "OK", 200
 
 
 # ─────────────────────────────
