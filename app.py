@@ -87,6 +87,8 @@ def lecture():
 def home():
     return redirect(url_for("login"))
 
+print("✅ Flask app loaded successfully, available routes:")
+print([r.rule for r in app.url_map.iter_rules()])
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
