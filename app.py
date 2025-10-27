@@ -37,6 +37,7 @@ def login():
 
 
 
+
     with open(ALLOWED_EMAILS_FILE, "r", encoding="utf-8-sig") as f:
         allowed_emails = [line.strip().lower() for line in f if line.strip()]
 
