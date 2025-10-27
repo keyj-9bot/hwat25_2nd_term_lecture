@@ -15,9 +15,13 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "key_flask_secret")
 
-DATA_FILE = "lecture_data.csv"
-QNA_FILE = "lecture_qna.csv"
-ALLOWED_EMAILS_FILE = "allowed_emails.txt"
+# ─────────────────────────────
+# 📁 파일 경로
+# ─────────────────────────────
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "lecture_data.csv")
+QNA_FILE = os.path.join(BASE_DIR, "lecture_qna.csv")
+ALLOWED_EMAILS_FILE = os.path.join(BASE_DIR, "allowed_emails.txt")
 PROFESSOR_PASSWORD = os.getenv("PROFESSOR_PASSWORD", "5555")
 
 # ✅ Render Health Check용
@@ -51,6 +55,7 @@ def save_qna(df):
     df.to_csv(QNA_FILE, index=False, encoding="utf-8-sig")
 
 def load_allowed_emails():
+    """허용된 이메일 목록을 읽음 (Render 절대경로 호환)"""
     if os.path.exists(ALLOWED_EMAILS_FILE):
         with open(ALLOWED_EMAILS_FILE, "r", encoding="utf-8") as f:
             return [line.strip().lower() for line in f if line.strip()]
@@ -72,9 +77,9 @@ def login_required(f):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    """allowed_emails.txt 기반 로그인"""
     allowed_emails = load_allowed_emails()
 
-    # allowed_emails.txt가 비어있거나 없을 경우 경고 표시
     if not allowed_emails:
         flash("⚠️ allowed_emails.txt 파일이 비어 있거나 존재하지 않습니다.", "danger")
 
