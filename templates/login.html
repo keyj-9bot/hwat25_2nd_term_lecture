@@ -1,17 +1,17 @@
+
 {% extends "base.html" %}
 {% block content %}
-<div class="login-container" style="max-width:400px;margin:auto;text-align:center;">
-  <h3 style="margin-bottom:20px;">🔐 로그인</h3>
+<div style="max-width:400px;margin:80px auto;text-align:center;background:white;padding:30px;border-radius:12px;box-shadow:0 0 8px rgba(0,0,0,0.1);">
 
-  <form method="POST" style="background:white;padding:25px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1);">
-    <label for="email">학교에 등록된 메일을 입력하여 로그인 하세요</label><br>
-    <input type="email" name="email" id="email" placeholder="***@***.***"
-           style="width:100%;padding:10px;margin:10px 0;border:1px solid #ccc;border-radius:6px;" required>
-    <button type="submit" style="width:100%;background:#003366;color:white;padding:10px;border:none;border-radius:6px;">
-      로그인
-    </button>
-    <p style="font-size:12px;color:#555;margin-top:10px;">※ 허용된 이메일만 접속 가능합니다.</p>
+  <h3>🔐 로그인</h3>
+  <p style="color:#555;font-size:14px;">학교에 등록된 메일을 입력하여 로그인하세요</p>
+
+  <form method="POST">
+    <input type="email" name="email" placeholder="***@***.***" required
+           style="width:100%;padding:10px;margin:10px 0;border:1px solid #ccc;border-radius:6px;">
+    <button type="submit" style="width:100%;padding:10px;background:#003366;color:white;border:none;border-radius:6px;cursor:pointer;">로그인</button>
   </form>
+
+  <p style="margin-top:15px;font-size:12px;color:#666;">※ 허용된 이메일만 접속 가능합니다.<br>문제가 있으면 관리자에게 문의하세요.</p>
 </div>
 {% endblock %}
-

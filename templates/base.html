@@ -7,23 +7,26 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <header style="background:#003366;color:white;padding:10px 20px;">
-    <h2>📘 연암공대 화공트랙 강의자료 & Q&A</h2>
-    <nav>
-      <a href="{{ url_for('home') }}" style="color:white;margin-right:20px;">홈</a>
-      <a href="{{ url_for('lecture') }}" style="color:white;margin-right:20px;">강의자료 & Q&A</a>
-      <a href="{{ url_for('logout') }}" style="color:white;">로그아웃</a>
-    </nav>
+  <header style="background:#003366;color:white;padding:12px 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;">📘 연암공대 화공트랙 강의자료 & Q&A</h2>
+      <nav>
+        <a href="{{ url_for('home') }}" style="color:white;margin-right:20px;">홈</a>
+        <a href="{{ url_for('lecture') }}" style="color:white;margin-right:20px;">강의자료 & Q&A</a>
+        {% if session.get('is_professor') %}
+          <a href="{{ url_for('upload_lecture') }}" style="color:white;margin-right:20px;">교수 업로드</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" style="color:white;">로그아웃</a>
+      </nav>
+    </div>
   </header>
 
-  <main class="container" style="margin:20px;">
-    <!-- 🧩 flash 메시지 표시 제거 (삭제되었습니다. 등 숨김) -->
+  <main style="padding:25px;">
     {% block content %}{% endblock %}
   </main>
 
-  <footer style="background:#003366;color:white;text-align:center;padding:10px;">
+  <footer style="background:#003366;color:white;text-align:center;padding:10px;margin-top:30px;">
     © 연암공대 화트25 | Key 교수님 강의 지원 시스템
   </footer>
 </body>
 </html>
-
