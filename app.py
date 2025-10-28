@@ -26,7 +26,7 @@ def save_data(df):
     df.to_csv(DATA_FILE, index=False, encoding="utf-8-sig")
 
 # ─────────────────────────────
-# 🏠 홈(공통 로그인)
+# 🏠 홈(공통 이메일 로그인)
 # ─────────────────────────────
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -34,7 +34,6 @@ def home():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
 
-        # allowed_emails.txt 읽기
         try:
             with open(ALLOWED_FILE, "r", encoding="utf-8") as f:
                 allowed = [line.strip().lower() for line in f if line.strip()]
