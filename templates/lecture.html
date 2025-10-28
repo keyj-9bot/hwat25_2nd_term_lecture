@@ -1,72 +1,62 @@
-
 {% extends "base.html" %}
 {% block content %}
-<h2>📘 강의자료 & Q&A</h2>
 
-<!-- 학생 질문 등록 -->
-<form method="POST" action="/lecture" class="mt-3 mb-4">
-  <label>💬 질문 등록:</label><br>
-  <textarea name="question" rows="3" style="width:70%; padding:5px;" placeholder="질문을 입력하세요" required></textarea>
-  <input type="text" name="password" placeholder="비밀번호(수정·삭제용)" style="width:20%; padding:5px;">
-  <button type="submit" class="btn btn-sm btn-primary">등록</button>
+<h3 class="fw-bold mb-4">📘 강의자료 목록</h3>
+
+{% if lectures %}
+<table class="table table-bordered align-middle text-center">
+  <thead class="table-primary">
+    <tr>
+      <th>제목</th>
+      <th>내용</th>
+      <th>파일</th>
+      <th>사이트</th>
+      <th>업로드시각</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for lec in lectures %}
+    <tr>
+      <td>{{ lec.title }}</td>
+      <td>{{ lec.content }}</td>
+      <td><a href="{{ lec.file_link }}" target="_blank">📂</a></td>
+      <td><a href="{{ lec.site_link }}" target="_blank">🌐</a></td>
+      <td>{{ lec.uploaded_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="text-muted">등록된 강의자료가 없습니다.</p>
+{% endif %}
+
+<hr class="my-4">
+<h4>💬 학생 질문 등록</h4>
+
+<form method="POST" action="{{ url_for('lecture') }}" class="mt-3">
+  <div class="mb-3">
+    <textarea name="question" class="form-control" rows="3" placeholder="질문을 입력하세요." required></textarea>
+  </div>
+  <div class="mb-3">
+    <input type="password" name="password" class="form-control" placeholder="비밀번호 (수정·삭제용)" required>
+  </div>
+  <button type="submit" class="btn btn-success w-100">질문 등록</button>
 </form>
 
-<!-- 학생 질문 목록 -->
-<h5>🧑‍🎓 학생 질문 목록</h5>
-<table class="table table-bordered table-sm">
-  <thead class="table-light">
-    <tr><th>번호</th><th>질문</th><th>작성시각</th><th>관리</th></tr>
-  </thead>
-  <tbody>
-    {% for row in qdata %}
-    <tr>
-      <td>{{ row["번호"] }}</td>
-      <td>{{ row["질문"] }}</td>
-      <td>{{ row["작성시각"] }}</td>
-      <td>
-        <form method="POST" action="/edit_question/{{ loop.index0 }}" style="display:inline;">
-          <input type="password" name="pw" placeholder="비번" style="width:70px;">
-          <input type="text" name="new_text" placeholder="수정내용" style="width:120px;">
-          <button class="btn btn-outline-success btn-sm">수정</button>
-        </form>
-        <form method="POST" action="/delete_question/{{ loop.index0 }}" style="display:inline;">
-          <input type="password" name="pw" placeholder="비번" style="width:70px;">
-          <button class="btn btn-outline-danger btn-sm">삭제</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<hr class="my-4">
+<h4>🗒️ 등록된 질문 목록</h4>
 
-<hr>
-<h5>📚 업로드된 강의자료</h5>
-<table class="table table-striped table-bordered">
-  <thead class="table-dark">
-    <tr>
-      <th>번호</th><th>내용</th><th>자료파일</th><th>연관사이트</th><th>비고</th>
-      {% if session.get('role') == 'professor' %}<th>업로드시각</th>{% endif %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for row in data %}
-    <tr>
-      <td>{{ row["번호"] }}</td>
-      <td>{{ row["내용"] }}</td>
-      <td>
-        {% for file in row["자료파일"].split(";") %}
-          {% if file %}
-          <a href="/download/{{ file.strip() }}" target="_blank">{{ file.strip() }}</a><br>
-          {% endif %}
-        {% endfor %}
-      </td>
-      <td>{{ row["연관사이트"] }}</td>
-      <td>{{ row["비고"] }}</td>
-      {% if session.get('role') == 'professor' %}
-      <td>{{ row["업로드시각"] }}</td>
-      {% endif %}
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+{% if questions %}
+<ul class="list-group">
+  {% for q in questions %}
+  <li class="list-group-item">
+    <strong>{{ q.email }}</strong> ({{ q.created_at }})<br>
+    {{ q.question }}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="text-muted">아직 질문이 없습니다.</p>
+{% endif %}
+
 {% endblock %}
