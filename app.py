@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화공트랙 강의자료 업로드 시스템 (교수 전용 접근제한 + 다중입력 지원 + 학생 질문 POST 대응)
+📘 연암공대 화공트랙 강의자료 업로드 시스템 (교수 전용 + 학생 질문 + 홈화면)
 작성자: Key 교수님
 """
 
@@ -33,29 +33,29 @@ def save_data(data):
 
 
 # ─────────────────────────────
-# 🏠 홈/강의자료 페이지
+# 🏠 홈
 # ─────────────────────────────
 @app.route("/")
 def home():
-    data = load_data()
-    return render_template("lecture.html", data=data)
+    return render_template("home.html")
 
 
+# ─────────────────────────────
+# 📄 강의자료 페이지 + 학생 질문
+# ─────────────────────────────
 @app.route("/lecture", methods=["GET", "POST"])
 def lecture():
     data = load_data()
 
-    # ✅ 학생 질문(POST) 처리
+    # ✅ 학생 질문 처리
     if request.method == "POST":
         question = request.form.get("question", "").strip()
         if question:
-            # 질문 저장 로직 (CSV에 별도 컬럼 추가 없이 간단히 로그로 남기거나 별도 파일에 기록 가능)
-            with open("student_questions.txt", "a", encoding="utf-8") as f:
+            # Render에서는 /tmp 폴더만 쓰기 가능
+            with open("/tmp/student_questions.txt", "a", encoding="utf-8") as f:
                 f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {question}\n")
-            print(f"📩 학생 질문 등록됨: {question}")
         return redirect(url_for("lecture"))
 
-    # GET 요청 시 강의자료 리스트 표시
     return render_template("lecture.html", data=data)
 
 
@@ -65,17 +65,18 @@ def lecture():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        try:
+            username = request.form["username"]
+            password = request.form["password"]
+        except KeyError:
+            return render_template("login.html", error="잘못된 로그인 요청입니다.")
 
-        # 간단한 교수 전용 로그인 예시
         if username == "professor" and password == "keypass":
             session["user"] = username
             session["role"] = "professor"
             return redirect(url_for("upload_lecture"))
         else:
             return render_template("login.html", error="로그인 실패: 교수 계정만 접근 가능합니다.")
-
     return render_template("login.html")
 
 
@@ -98,7 +99,6 @@ def health():
 # ─────────────────────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    # 교수 전용 접근 제한
     if "user" not in session or session.get("role") != "professor":
         return redirect(url_for("login"))
 
@@ -127,7 +127,7 @@ def upload_lecture():
 
 
 # ─────────────────────────────
-# ✏️ 수정 / 삭제 기능
+# ✏️ 수정 / 삭제
 # ─────────────────────────────
 @app.route("/edit/<int:index>", methods=["GET", "POST"])
 def edit(index):
