@@ -14,31 +14,9 @@ app.secret_key = "key_flask_secret"
 
 DATA_FILE = "lecture_data.csv"
 UPLOAD_FOLDER = "/tmp/uploads"
-PASSWORD_FILE = "/tmp/prof_password.txt"
 QUESTION_FILE = "/tmp/student_questions.csv"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# ─────────────────────────────
-# 🔐 비밀번호 초기화
-# ─────────────────────────────
-if not os.path.exists(PASSWORD_FILE):
-    with open(PASSWORD_FILE, "w", encoding="utf-8") as f:
-        f.write("keypass")
-
-
-def get_password():
-    try:
-        with open(PASSWORD_FILE, "r", encoding="utf-8") as f:
-            return f.read().strip()
-    except:
-        return "keypass"
-
-
-def set_password(new_pw):
-    with open(PASSWORD_FILE, "w", encoding="utf-8") as f:
-        f.write(new_pw.strip())
-
 
 # ─────────────────────────────
 # 📂 CSV 로드 및 저장
@@ -52,11 +30,9 @@ def load_data():
             return []
     return []
 
-
 def save_data(data):
     df = pd.DataFrame(data)
     df.to_csv(DATA_FILE, index=False, encoding="utf-8-sig")
-
 
 # ─────────────────────────────
 # 🏠 홈
@@ -65,20 +41,25 @@ def save_data(data):
 def home():
     return render_template("home.html")
 
-
 # ─────────────────────────────
 # 💬 학생 질문 페이지
 # ─────────────────────────────
 @app.route("/lecture", methods=["GET", "POST"])
 def lecture():
+    columns = ["번호", "질문", "비밀번호", "작성시각"]
+
+    # CSV 없거나 오류 시 자동 초기화
     if not os.path.exists(QUESTION_FILE):
-        pd.DataFrame(columns=["번호", "질문", "비밀번호", "작성시각"]).to_csv(QUESTION_FILE, index=False)
+        pd.DataFrame(columns=columns).to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
 
     try:
         df = pd.read_csv(QUESTION_FILE)
-    except:
-        df = pd.DataFrame(columns=["번호", "질문", "비밀번호", "작성시각"])
+        if not set(columns).issubset(df.columns):
+            df = pd.DataFrame(columns=columns)
+    except Exception:
+        df = pd.DataFrame(columns=columns)
 
+    # 질문 등록
     if request.method == "POST":
         question = request.form.get("question", "").strip()
         pw = request.form.get("password", "").strip()
@@ -87,7 +68,7 @@ def lecture():
                 "번호": len(df) + 1,
                 "질문": question,
                 "비밀번호": pw,
-                "작성시각": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "작성시각": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
@@ -95,7 +76,6 @@ def lecture():
 
     data = load_data()
     return render_template("lecture.html", data=data, qdata=df.to_dict(orient="records"))
-
 
 # ─────────────────────────────
 # 💬 질문 수정/삭제
@@ -110,7 +90,6 @@ def edit_question(index):
         df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
     return redirect(url_for("lecture"))
 
-
 @app.route("/delete_question/<int:index>", methods=["POST"])
 def delete_question(index):
     df = pd.read_csv(QUESTION_FILE)
@@ -121,7 +100,6 @@ def delete_question(index):
         df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
     return redirect(url_for("lecture"))
 
-
 # ─────────────────────────────
 # 🔑 교수 로그인 / 로그아웃
 # ─────────────────────────────
@@ -130,7 +108,7 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        if username == "professor" and password == get_password():
+        if username == "professor" and password == "keypass":
             session["user"] = username
             session["role"] = "professor"
             return redirect(url_for("upload_lecture"))
@@ -138,12 +116,10 @@ def login():
             return render_template("login.html", error="로그인 실패: 교수 전용입니다.")
     return render_template("login.html")
 
-
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("home"))
-
 
 # ─────────────────────────────
 # 📤 강의자료 업로드
@@ -182,13 +158,11 @@ def upload_lecture():
 
     return render_template("upload_lecture.html", data=data)
 
-
 @app.route("/download/<filename>")
 def download(filename):
     if "user" not in session or session.get("role") != "professor":
         return "접근 권한이 없습니다.", 403
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
-
 
 # ─────────────────────────────
 # 🩺 Health Check
@@ -197,9 +171,6 @@ def download(filename):
 def health():
     return {"status": "ok"}, 200
 
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-
-

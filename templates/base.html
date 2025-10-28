@@ -12,7 +12,9 @@
     <div class="navbar-nav ms-auto">
       <a class="nav-link" href="{{ url_for('home') }}">홈</a>
       {% if session.get('user') %}
-      <a class="nav-link" href="{{ url_for('logout') }}">로그아웃</a>
+        <a class="nav-link" href="{{ url_for('logout') }}">로그아웃</a>
+      {% else %}
+        <span class="nav-link disabled text-light">로그아웃</span>
       {% endif %}
     </div>
   </nav>
