@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h3✏️ 질문 수정</h3>
+<p>질문 번호: {{ q["번호"] }}</p>
+<p>현재 내용: {{ q["질문"] }}</p>
+
+<form method="POST" action="{{ url_for('edit_question', index=index) }}">
+  <label>새로운 내용:</label><br>
+  <input type="text" name="new_question" value="{{ q['질문'] }}" style="width:70%; padding:5px;"><br><br>
+
+  <label>비밀번호 확인:</label><br>
+  <input type="password" name="password" placeholder="등록 시 입력한 비밀번호" required style="width:50%; padding:5px;"><br><br>
+
+  <button type="submit">수정 완료</button>
+  <a href="{{ url_for('lecture') }}">취소</a>
+</form>
+{% endblock %}

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화공트랙 강의자료 업로드 시스템 (교수 전용 + 학생 질문 + 홈화면)
+📘 연암공대 화공트랙 강의자료 업로드 시스템
+(학생 질문 등록/수정/삭제 + 교수 전용 업로드/로그인 완성판)
 작성자: Key 교수님
 """
 
@@ -12,6 +13,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
 DATA_FILE = "lecture_data.csv"
+QUESTION_FILE = "/tmp/student_questions.csv"  # Render 호환 경로
 
 
 # ─────────────────────────────
@@ -32,6 +34,21 @@ def save_data(data):
     df.to_csv(DATA_FILE, index=False, encoding="utf-8-sig")
 
 
+def load_questions():
+    if os.path.exists(QUESTION_FILE):
+        try:
+            df = pd.read_csv(QUESTION_FILE)
+            return df.to_dict(orient="records")
+        except:
+            return []
+    return []
+
+
+def save_questions(data):
+    df = pd.DataFrame(data)
+    df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
+
+
 # ─────────────────────────────
 # 🏠 홈
 # ─────────────────────────────
@@ -40,23 +57,70 @@ def home():
     return render_template("home.html")
 
 
+@app.route("/home")
+def go_home():
+    return redirect(url_for("home"))
+
+
 # ─────────────────────────────
-# 📄 강의자료 페이지 + 학생 질문
+# 📄 강의자료 + 학생 Q&A
 # ─────────────────────────────
 @app.route("/lecture", methods=["GET", "POST"])
 def lecture():
     data = load_data()
+    questions = load_questions()
 
-    # ✅ 학생 질문 처리
+    # ✅ 학생 질문 등록
     if request.method == "POST":
         question = request.form.get("question", "").strip()
+        password = request.form.get("password", "").strip()
+
         if question:
-            # Render에서는 /tmp 폴더만 쓰기 가능
-            with open("/tmp/student_questions.txt", "a", encoding="utf-8") as f:
-                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {question}\n")
+            new_q = {
+                "번호": len(questions) + 1,
+                "질문": question,
+                "비밀번호": password if password else "",
+                "작성시각": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            questions.append(new_q)
+            save_questions(questions)
         return redirect(url_for("lecture"))
 
-    return render_template("lecture.html", data=data)
+    return render_template("lecture.html", data=data, questions=questions)
+
+
+# ✅ 질문 삭제
+@app.route("/delete_question/<int:index>", methods=["POST"])
+def delete_question(index):
+    questions = load_questions()
+    if 0 <= index < len(questions):
+        password = request.form.get("password", "")
+        if questions[index].get("비밀번호") == password:
+            del questions[index]
+            for i, q in enumerate(questions):
+                q["번호"] = i + 1
+            save_questions(questions)
+    return redirect(url_for("lecture"))
+
+
+# ✅ 질문 수정
+@app.route("/edit_question/<int:index>", methods=["GET", "POST"])
+def edit_question(index):
+    questions = load_questions()
+    if 0 <= index < len(questions):
+        if request.method == "POST":
+            password = request.form.get("password", "")
+            new_text = request.form.get("new_question", "").strip()
+
+            # 비밀번호 확인
+            if questions[index].get("비밀번호") == password:
+                questions[index]["질문"] = new_text
+                questions[index]["작성시각"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S (수정됨)")
+                save_questions(questions)
+            return redirect(url_for("lecture"))
+
+        return render_template("edit_question.html", q=questions[index], index=index)
+    return redirect(url_for("lecture"))
 
 
 # ─────────────────────────────
@@ -65,13 +129,10 @@ def lecture():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        try:
-            username = request.form["username"]
-            password = request.form["password"]
-        except KeyError:
-            return render_template("login.html", error="잘못된 로그인 요청입니다.")
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
 
-        if username == "professor" and password == "keypass":
+        if username.endswith("@yc.ac.kr") and password == "5555":
             session["user"] = username
             session["role"] = "professor"
             return redirect(url_for("upload_lecture"))
@@ -87,7 +148,7 @@ def logout():
 
 
 # ─────────────────────────────
-# 🩺 Render Health Check 대응
+# 🩺 Render Health Check
 # ─────────────────────────────
 @app.route("/health")
 def health():
@@ -126,9 +187,6 @@ def upload_lecture():
     return render_template("upload_lecture.html", data=data)
 
 
-# ─────────────────────────────
-# ✏️ 수정 / 삭제
-# ─────────────────────────────
 @app.route("/edit/<int:index>", methods=["GET", "POST"])
 def edit(index):
     if "user" not in session or session.get("role") != "professor":
@@ -171,3 +229,4 @@ def delete(index):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
