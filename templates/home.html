@@ -1,78 +1,13 @@
+
 {% extends "base.html" %}
 {% block content %}
-
-<style>
-  /* 상단 네비게이션 버튼 */
-  .nav-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 15px;
-  }
-  .nav-buttons a {
-    background-color: #003366;
-    color: white;
-    padding: 8px 20px;
-    border-radius: 6px;
-    text-decoration: none;
-    transition: 0.2s;
-    font-weight: 500;
-  }
-  .nav-buttons a:hover {
-    background-color: #0055aa;
-  }
-
-  /* 메인 버튼 */
-  .main-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    margin-top: 60px;
-  }
-  .main-buttons a {
-    background-color: #1E88E5;
-    color: white;
-    padding: 18px 40px;
-    border-radius: 10px;
-    font-size: 18px;
-    text-decoration: none;
-    font-weight: bold;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
-    transition: all 0.2s ease;
-  }
-  .main-buttons a:hover {
-    background-color: #1565C0;
-    transform: translateY(-2px);
-  }
-
-  /* 전체 중앙 정렬 */
-  .center-container {
-    text-align: center;
-    margin-top: 50px;
-  }
-
-  h2 {
-    color: #003366;
-    margin-bottom: 20px;
-  }
-</style>
-
-<div class="center-container">
+<div style="text-align:center; margin-top:60px;">
   <h2>🏫 연암공대 화공트랙 강의자료 & Q&A 시스템</h2>
   <p>아래 메뉴에서 선택해주세요.</p>
 
-  <!-- 상단 네비게이션 -->
-  <div class="nav-buttons">
-    <a href="/">홈</a>
-    <a href="/lecture">강의자료 & Q&A</a>
-    <a href="/logout">로그아웃</a>
-  </div>
-
-  <!-- 메인 버튼 -->
-  <div class="main-buttons">
-    <a href="/lecture">📘 강의자료 보기</a>
-    <a href="/login">👨‍🏫 교수 로그인</a>
+  <div style="margin-top:25px;">
+    <a href="{{ url_for('lecture') }}" class="btn btn-primary btn-lg mx-2">📘 강의자료 보기</a>
+    <a href="{{ url_for('login') }}" class="btn btn-success btn-lg mx-2">👨‍🏫 교수 로그인</a>
   </div>
 </div>
-
 {% endblock %}
