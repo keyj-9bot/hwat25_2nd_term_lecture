@@ -91,7 +91,7 @@ def logout():
 # ─────────────────────────────
 @app.route("/health")
 def health():
-    return "OK", 200
+    return {"status": "ok"}, 200
 
 
 # ─────────────────────────────
