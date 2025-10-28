@@ -4,7 +4,7 @@
 작성자: Key 교수님
 """
 
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, make_response
 import pandas as pd
 import os
 from datetime import datetime
@@ -15,7 +15,18 @@ app.secret_key = "key_flask_secret"
 DATA_FILE = "lecture_data.csv"
 UPLOAD_FOLDER = "/tmp/uploads"
 QUESTION_FILE = "/tmp/student_questions.csv"
+ALLOWED_EMAILS_FILE = "allowed_emails.txt"
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# ─────────────────────────────
+# 허용된 이메일 목록 로드
+# ─────────────────────────────
+def allowed_emails():
+    if os.path.exists(ALLOWED_EMAILS_FILE):
+        with open(ALLOWED_EMAILS_FILE, "r", encoding="utf-8") as f:
+            return [line.strip() for line in f if line.strip()]
+    return []
 
 # ─────────────────────────────
 # 데이터 로드 및 저장
@@ -23,8 +34,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def load_data():
     if os.path.exists(DATA_FILE):
         try:
-            df = pd.read_csv(DATA_FILE)
-            return df.to_dict(orient="records")
+            return pd.read_csv(DATA_FILE).to_dict(orient="records")
         except:
             return []
     return []
@@ -40,20 +50,24 @@ def home():
     return render_template("home.html")
 
 # ─────────────────────────────
-# 강의자료 & 질문 페이지
+# 강의자료 & Q&A
 # ─────────────────────────────
 @app.route("/lecture", methods=["GET", "POST"])
 def lecture():
-    columns = ["번호", "질문", "비밀번호", "작성시각"]
-    if not os.path.exists(QUESTION_FILE):
-        pd.DataFrame(columns=columns).to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
-    try:
-        df = pd.read_csv(QUESTION_FILE)
-        if not set(columns).issubset(df.columns):
-            df = pd.DataFrame(columns=columns)
-    except:
-        df = pd.DataFrame(columns=columns)
+    cols = ["번호", "질문", "비밀번호", "작성시각"]
 
+    # ✅ CSV 파일 없거나 손상 시 자동 초기화
+    try:
+        if not os.path.exists(QUESTION_FILE):
+            pd.DataFrame(columns=cols).to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
+        df = pd.read_csv(QUESTION_FILE)
+        if set(cols) - set(df.columns):
+            df = pd.DataFrame(columns=cols)
+    except Exception:
+        df = pd.DataFrame(columns=cols)
+        df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
+
+    # ✅ 학생 질문 등록
     if request.method == "POST":
         q = request.form.get("question", "").strip()
         pw = request.form.get("password", "").strip()
@@ -68,8 +82,7 @@ def lecture():
             df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
         return redirect(url_for("lecture"))
 
-    data = load_data()
-    return render_template("lecture.html", data=data, qdata=df.to_dict(orient="records"))
+    return render_template("lecture.html", qdata=df.to_dict(orient="records"), data=load_data())
 
 # ─────────────────────────────
 # 교수 로그인 / 로그아웃
@@ -79,18 +92,24 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        if username == "professor" and password == "keypass":
+
+        # ✅ allowed_emails.txt 기반 허용
+        if username in allowed_emails() or (username == "professor" and password == "keypass"):
             session["user"] = username
-            session["role"] = "professor"
             return redirect(url_for("upload_lecture"))
         else:
-            return render_template("login.html", error="로그인 실패: 교수 전용입니다.")
+            return render_template("login.html", error="로그인 실패: 허용되지 않은 사용자입니다.")
     return render_template("login.html")
 
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect("/")
+    resp = make_response(redirect("/"))
+    resp.set_cookie("session", "", expires=0)
+    resp.headers["Cache-Control"] = "no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 # ─────────────────────────────
 # 강의자료 업로드
@@ -140,7 +159,3 @@ def download(filename):
 @app.route("/health")
 def health():
     return {"status": "ok"}
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
