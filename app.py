@@ -1,7 +1,6 @@
-
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화공트랙 강의자료 업로드 시스템 (교수 전용 접근제한 + 다중입력 지원 완성판)
+📘 연암공대 화공트랙 강의자료 업로드 시스템 (교수 전용 접근제한 + 다중입력 지원 + 학생 질문 POST 대응)
 작성자: Key 교수님
 """
 
@@ -42,9 +41,21 @@ def home():
     return render_template("lecture.html", data=data)
 
 
-@app.route("/lecture")
+@app.route("/lecture", methods=["GET", "POST"])
 def lecture():
     data = load_data()
+
+    # ✅ 학생 질문(POST) 처리
+    if request.method == "POST":
+        question = request.form.get("question", "").strip()
+        if question:
+            # 질문 저장 로직 (CSV에 별도 컬럼 추가 없이 간단히 로그로 남기거나 별도 파일에 기록 가능)
+            with open("student_questions.txt", "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {question}\n")
+            print(f"📩 학생 질문 등록됨: {question}")
+        return redirect(url_for("lecture"))
+
+    # GET 요청 시 강의자료 리스트 표시
     return render_template("lecture.html", data=data)
 
 
@@ -57,7 +68,7 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        # 간단한 교수 전용 로그인 예시 (필요 시 DB 또는 별도 파일 연동 가능)
+        # 간단한 교수 전용 로그인 예시
         if username == "professor" and password == "keypass":
             session["user"] = username
             session["role"] = "professor"
@@ -74,13 +85,13 @@ def logout():
     return redirect(url_for("home"))
 
 
-
 # ─────────────────────────────
 # 🩺 Render Health Check 대응
 # ─────────────────────────────
 @app.route("/health")
 def health():
     return "OK", 200
+
 
 # ─────────────────────────────
 # 📤 교수 전용 업로드 페이지
@@ -95,7 +106,6 @@ def upload_lecture():
 
     if request.method == "POST":
         topic = request.form.get("topic", "").strip()
-        # 여러 입력값(자료파일, 연관사이트)을 모두 리스트로 받아 ';'로 연결
         file_urls = [x.strip() for x in request.form.getlist("file_url") if x.strip()]
         ref_sites = [x.strip() for x in request.form.getlist("ref_site") if x.strip()]
         notes = request.form.get("notes", "").strip()
@@ -111,7 +121,6 @@ def upload_lecture():
 
         data.append(new_entry)
         save_data(data)
-
         return redirect(url_for("upload_lecture"))
 
     return render_template("upload_lecture.html", data=data)
@@ -150,7 +159,6 @@ def delete(index):
     data = load_data()
     if 0 <= index < len(data):
         del data[index]
-        # 번호 재정렬
         for i, row in enumerate(data):
             row["번호"] = i + 1
         save_data(data)
@@ -163,4 +171,3 @@ def delete(index):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-
