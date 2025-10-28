@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화공트랙 강의자료 & Q&A 시스템 (2025 통합 리빌드판)
+📘 화트25 강의자료 및 Q&A 등록시스템 (Yonam College)
 작성자: Key 교수님
 """
 
@@ -11,14 +11,16 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
+
 DATA_FILE = "lecture_data.csv"
 UPLOAD_FOLDER = "/tmp/uploads"
 PASSWORD_FILE = "/tmp/prof_password.txt"
+QUESTION_FILE = "/tmp/student_questions.csv"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ─────────────────────────────
-# 🔐 초기 비밀번호 설정
+# 🔐 비밀번호 초기화
 # ─────────────────────────────
 if not os.path.exists(PASSWORD_FILE):
     with open(PASSWORD_FILE, "w", encoding="utf-8") as f:
@@ -26,8 +28,11 @@ if not os.path.exists(PASSWORD_FILE):
 
 
 def get_password():
-    with open(PASSWORD_FILE, "r", encoding="utf-8") as f:
-        return f.read().strip()
+    try:
+        with open(PASSWORD_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except:
+        return "keypass"
 
 
 def set_password(new_pw):
@@ -36,7 +41,7 @@ def set_password(new_pw):
 
 
 # ─────────────────────────────
-# 📂 데이터 로드/저장
+# 📂 CSV 로드 및 저장
 # ─────────────────────────────
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -66,15 +71,14 @@ def home():
 # ─────────────────────────────
 @app.route("/lecture", methods=["GET", "POST"])
 def lecture():
-    data = load_data()
-    questions_file = "/tmp/student_questions.csv"
+    if not os.path.exists(QUESTION_FILE):
+        pd.DataFrame(columns=["번호", "질문", "비밀번호", "작성시각"]).to_csv(QUESTION_FILE, index=False)
 
-    if not os.path.exists(questions_file):
-        pd.DataFrame(columns=["번호", "질문", "비밀번호", "작성시각"]).to_csv(questions_file, index=False)
+    try:
+        df = pd.read_csv(QUESTION_FILE)
+    except:
+        df = pd.DataFrame(columns=["번호", "질문", "비밀번호", "작성시각"])
 
-    df = pd.read_csv(questions_file)
-
-    # 질문 등록
     if request.method == "POST":
         question = request.form.get("question", "").strip()
         pw = request.form.get("password", "").strip()
@@ -83,12 +87,13 @@ def lecture():
                 "번호": len(df) + 1,
                 "질문": question,
                 "비밀번호": pw,
-                "작성시각": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "작성시각": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            df.to_csv(questions_file, index=False, encoding="utf-8-sig")
+            df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
         return redirect(url_for("lecture"))
 
+    data = load_data()
     return render_template("lecture.html", data=data, qdata=df.to_dict(orient="records"))
 
 
@@ -97,31 +102,28 @@ def lecture():
 # ─────────────────────────────
 @app.route("/edit_question/<int:index>", methods=["POST"])
 def edit_question(index):
-    questions_file = "/tmp/student_questions.csv"
-    df = pd.read_csv(questions_file)
+    df = pd.read_csv(QUESTION_FILE)
     pw = request.form.get("pw", "")
     new_text = request.form.get("new_text", "").strip()
-
-    if df.loc[index, "비밀번호"] == pw:
+    if 0 <= index < len(df) and df.loc[index, "비밀번호"] == pw:
         df.loc[index, "질문"] = new_text
-        df.to_csv(questions_file, index=False, encoding="utf-8-sig")
+        df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
     return redirect(url_for("lecture"))
 
 
 @app.route("/delete_question/<int:index>", methods=["POST"])
 def delete_question(index):
-    questions_file = "/tmp/student_questions.csv"
-    df = pd.read_csv(questions_file)
+    df = pd.read_csv(QUESTION_FILE)
     pw = request.form.get("pw", "")
-    if df.loc[index, "비밀번호"] == pw:
+    if 0 <= index < len(df) and df.loc[index, "비밀번호"] == pw:
         df = df.drop(index)
         df["번호"] = range(1, len(df) + 1)
-        df.to_csv(questions_file, index=False, encoding="utf-8-sig")
+        df.to_csv(QUESTION_FILE, index=False, encoding="utf-8-sig")
     return redirect(url_for("lecture"))
 
 
 # ─────────────────────────────
-# 🔑 로그인 / 로그아웃 / 비밀번호 변경
+# 🔑 교수 로그인 / 로그아웃
 # ─────────────────────────────
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -137,21 +139,6 @@ def login():
     return render_template("login.html")
 
 
-@app.route("/change_password", methods=["GET", "POST"])
-def change_password():
-    if "user" not in session:
-        return redirect(url_for("login"))
-    if request.method == "POST":
-        old_pw = request.form.get("old_pw", "")
-        new_pw = request.form.get("new_pw", "")
-        if old_pw == get_password():
-            set_password(new_pw)
-            return render_template("change_password.html", message="비밀번호가 성공적으로 변경되었습니다.")
-        else:
-            return render_template("change_password.html", error="기존 비밀번호가 일치하지 않습니다.")
-    return render_template("change_password.html")
-
-
 @app.route("/logout")
 def logout():
     session.clear()
@@ -159,21 +146,20 @@ def logout():
 
 
 # ─────────────────────────────
-# 📤 교수 전용 업로드
+# 📤 강의자료 업로드
 # ─────────────────────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    if "user" not in session or session.get("role") != "professor":
+    if "user" not in session:
         return redirect(url_for("login"))
 
     data = load_data()
-
     if request.method == "POST":
         topic = request.form.get("topic", "").strip()
         notes = request.form.get("notes", "").strip()
         ref_sites = [x.strip() for x in request.form.getlist("ref_site") if x.strip()]
-
         uploaded_files = request.files.getlist("file")
+
         filenames = []
         for file in uploaded_files:
             if file.filename:
@@ -205,17 +191,15 @@ def download(filename):
 
 
 # ─────────────────────────────
-# 🩺 Render Health Check
+# 🩺 Health Check
 # ─────────────────────────────
 @app.route("/health")
 def health():
     return {"status": "ok"}, 200
 
 
-# ─────────────────────────────
-# 🚀 실행
-# ─────────────────────────────
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
