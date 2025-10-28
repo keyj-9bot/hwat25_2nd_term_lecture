@@ -1,3 +1,6 @@
+/* ─────────────────────────────
+📘 기본 전역 스타일
+───────────────────────────── */
 body {
   font-family: 'Segoe UI', sans-serif;
   margin: 0;
@@ -5,6 +8,9 @@ body {
   background: #fafafa;
 }
 
+/* ─────────────────────────────
+📘 헤더 / 네비게이션
+───────────────────────────── */
 header {
   background: #2b3a67;
   color: white;
@@ -33,10 +39,16 @@ nav a:hover {
   color: #ffcccc !important;
 }
 
+/* ─────────────────────────────
+📘 메인 콘텐츠
+───────────────────────────── */
 main {
   padding: 30px;
 }
 
+/* ─────────────────────────────
+📊 테이블 스타일
+───────────────────────────── */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -52,15 +64,20 @@ th {
   background: #eee;
 }
 
+/* ─────────────────────────────
+📘 버튼 스타일
+───────────────────────────── */
 button {
   background: #4CAF50;
   color: white;
   border: none;
   padding: 8px 12px;
   cursor: pointer;
+  border-radius: 4px;
 }
 
-button.delete {
+button.delete,
+.btn-delete {
   background: #e74c3c;
 }
 
@@ -68,26 +85,7 @@ button:hover {
   opacity: 0.9;
 }
 
-textarea, input[type=text] {
-  width: 100%;
-  padding: 8px;
-  margin: 5px 0;
-}
-
-.message {
-  color: #0077cc;
-  font-weight: bold;
-}
-
-footer {
-  background: #2b3a67;
-  color: white;
-  text-align: center;
-  padding: 10px;
-  margin-top: 30px;
-}
-
-
+/* 추가 버튼 유형 */
 .btn-upload {
   background-color: #4CAF50;
   color: white;
@@ -123,17 +121,79 @@ footer {
   text-decoration: none;
 }
 
-.btn-delete {
-  background-color: #e53935;
-  color: white;
-  padding: 4px 8px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+/* ─────────────────────────────
+📘 입력 폼 / 텍스트 영역
+───────────────────────────── */
+textarea, 
+input[type=text],
+input[type=email],
+input[type=password] {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  box-sizing: border-box;
 }
 
+input:focus, textarea:focus {
+  outline: none;
+  border-color: #2b3a67;
+  box-shadow: 0 0 3px rgba(43, 58, 103, 0.4);
+}
+
+/* ─────────────────────────────
+📘 알림 메시지 (flash)
+───────────────────────────── */
+.alert-success {
+  background: #e6f7e6;
+  color: #206020;
+  border: 1px solid #b5e7b5;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.alert-danger {
+  background: #fdecea;
+  color: #a83232;
+  border: 1px solid #f5b5b5;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.alert-warning {
+  background: #fff4e5;
+  color: #8a6d3b;
+  border: 1px solid #ffd699;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.alert-info {
+  background: #eaf4fc;
+  color: #31708f;
+  border: 1px solid #bcdffb;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+/* ─────────────────────────────
+📘 기타 텍스트 및 메시지
+───────────────────────────── */
 .message {
   color: #333;
   margin-top: 10px;
   font-weight: bold;
+}
+
+footer {
+  background: #2b3a67;
+  color: white;
+  text-align: center;
+  padding: 10px;
+  margin-top: 30px;
 }

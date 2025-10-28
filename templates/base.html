@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -12,12 +11,24 @@
     <nav>
       <a href="{{ url_for('home') }}" style="color:white;margin-right:20px;">홈</a>
       <a href="{{ url_for('lecture') }}" style="color:white;margin-right:20px;">강의자료 & Q&A</a>
-
+      <a href="{{ url_for('logout') }}" style="color:white;">로그아웃</a>
     </nav>
   </header>
+
   <main class="container" style="margin:20px;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div style="margin-bottom:10px;">
+          {% for category, msg in messages %}
+            <div style="padding:10px; border-radius:8px; margin-bottom:6px;"
+                 class="alert alert-{{ category }}">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </main>
+
   <footer style="background:#003366;color:white;text-align:center;padding:10px;">
     © 연암공대 화트25 | Key 교수님 강의 지원 시스템
   </footer>
