@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -7,7 +8,7 @@
 </head>
 <body>
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary px-3">
-    <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">🏫 연암공대 화트25 학습게시판</a>
+    <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">🏫 화트25 강의자료 및 Q&A</a>
     <div class="navbar-nav ms-auto">
       <a class="nav-link" href="{{ url_for('home') }}">홈</a>
       {% if session.get('user') or session.get('professor') %}
@@ -23,7 +24,7 @@
   </div>
 
   <footer class="text-center text-light bg-primary py-2 mt-4">
-    © 연암공대 화트25 | Key 교수님 강의 지원 시스템
+    © 연암공대 화트25 | Key 교수님 학습게시판
   </footer>
 </body>
 </html>
