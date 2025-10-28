@@ -1,13 +1,9 @@
-
 {% extends "base.html" %}
 {% block content %}
-<div style="text-align:center; margin-top:60px;">
-  <h2>🏫 연암공대 화공트랙 강의자료 & Q&A 시스템</h2>
+<div class="text-center mt-4">
+  <h4>🏠 화공트랙 강의자료 및 Q&A</h4>
   <p>아래 메뉴에서 선택해주세요.</p>
-
-  <div style="margin-top:25px;">
-    <a href="{{ url_for('lecture') }}" class="btn btn-primary btn-lg mx-2">📘 강의자료 보기</a>
-    <a href="{{ url_for('login') }}" class="btn btn-success btn-lg mx-2">👨‍🏫 교수 로그인</a>
-  </div>
+  <a href="{{ url_for('lecture') }}" class="btn btn-primary m-2">📘 강의자료 보기</a>
+  <a href="{{ url_for('login') }}" class="btn btn-success m-2">👨‍🏫 교수 로그인</a>
 </div>
 {% endblock %}
