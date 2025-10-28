@@ -1,9 +1,33 @@
+
 {% extends "base.html" %}
 {% block content %}
-<div class="text-center mt-4">
-  <h4>🏠 화공트랙 강의자료 및 Q&A</h4>
-  <p>아래 메뉴에서 선택해주세요.</p>
-  <a href="{{ url_for('lecture') }}" class="btn btn-primary m-2">📘 강의자료 보기</a>
-  <a href="{{ url_for('login') }}" class="btn btn-success m-2">👨‍🏫 교수 로그인</a>
+
+<div class="text-center mt-5">
+  <h2 class="fw-bold mb-4">📘 화공트랙 강의자료 및 Q&A</h2>
+  <p class="text-muted mb-4">
+    등록된 이메일 주소로만 접속할 수 있습니다.
+  </p>
+
+  <form method="POST" action="/" class="mx-auto" style="max-width:400px;">
+    <div class="mb-3">
+      <label for="email" class="form-label fw-semibold">이메일 주소</label>
+      <input type="email" class="form-control text-center" id="email" name="email"
+             placeholder="예: student@yc.ac.kr" required>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">로그인</button>
+  </form>
+
+  {% if error %}
+  <div class="alert alert-danger mt-3" role="alert">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <hr class="my-5">
+  <div>
+    <a href="{{ url_for('lecture') }}" class="btn btn-outline-primary me-2">📖 강의자료 보기</a>
+    <a href="{{ url_for('login_prof') }}" class="btn btn-outline-secondary">👨‍🏫 교수 업로드 로그인</a>
+  </div>
 </div>
+
 {% endblock %}
