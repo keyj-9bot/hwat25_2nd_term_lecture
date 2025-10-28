@@ -108,22 +108,23 @@ def lecture():
                 pd.DataFrame(qna).to_csv(QNA_FILE, index=False, encoding="utf-8-sig")
                 flash("✅ 질문이 등록되었습니다.", "success")
 
-        # 🔴 학생 질문 삭제
-        elif action == "delete_qna":
-            try:
-                index = int(request.form.get("index", -1))
-                password = request.form.get("password", "")
-                if 0 <= index < len(qna):
-                    if qna[index]["비밀번호"] == password or password == "5555":
-                        del qna[index]
-                        pd.DataFrame(qna).to_csv(QNA_FILE, index=False, encoding="utf-8-sig")
-                        flash("🗑️ 질문이 삭제되었습니다.", "info")
-                    else:
-                        flash("❌ 비밀번호가 일치하지 않습니다.", "danger")
-                else:
-                    flash("❌ 해당 질문을 찾을 수 없습니다.", "danger")
-            except Exception as e:
-                flash(f"⚠️ 삭제 중 오류 발생: {e}", "danger")
+# 🔴 학생 질문 삭제
+elif action == "delete_qna":
+    try:
+        index = int(request.form.get("index", -1))
+        password = request.form.get("password", "")
+        if 0 <= index < len(qna):
+            if qna[index]["비밀번호"] == password or password == "5555":
+                del qna[index]
+                pd.DataFrame(qna).to_csv(QNA_FILE, index=False, encoding="utf-8-sig")
+                flash("🗑️ 질문이 삭제되었습니다.", "info")
+            else:
+                flash("❌ 비밀번호가 일치하지 않습니다.", "danger")
+        else:
+            flash("❌ 해당 질문을 찾을 수 없습니다.", "danger")
+    except Exception as e:
+        flash(f"⚠️ 삭제 중 오류 발생: {e}", "danger")
+
 
         return redirect(url_for("lecture"))
 

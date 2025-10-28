@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-4">
@@ -45,7 +46,7 @@
   <!-- 💬 Q&A Section -->
   <section style="background:#f8f9fa;padding:20px;border-radius:12px;">
     <h4>💬 학생 질문 게시판 
-      <small class="text-muted">(비밀번호 4자리 / 교수 비번: 5555)</small>
+      <small class="text-muted">(비밀번호 4자리)</small>
     </h4>
 
     <!-- 학생 질문 등록 -->
@@ -66,7 +67,7 @@
       <small class="text-muted">({{ item["이름"] }}, {{ item["등록시각"] }})</small>
 
       <!-- 학생 삭제 -->
-      <form method="POST" class="mt-2 mb-2">
+      <form method="POST" class="mt-2 mb-2" onsubmit="return confirm('정말 삭제하시겠습니까?');">
         <input type="hidden" name="action" value="delete_qna">
         <input type="hidden" name="index" value="{{ loop.index0 }}">
         <input type="password" name="password" maxlength="4" class="form-control d-inline-block" placeholder="비밀번호 입력" style="width:150px; display:inline-block;">

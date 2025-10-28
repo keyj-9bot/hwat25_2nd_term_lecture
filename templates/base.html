@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -16,16 +17,7 @@
   </header>
 
   <main class="container" style="margin:20px;">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div style="margin-bottom:10px;">
-          {% for category, msg in messages %}
-            <div style="padding:10px; border-radius:8px; margin-bottom:6px;"
-                 class="alert alert-{{ category }}">{{ msg }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+    <!-- 🧩 flash 메시지 표시 제거 (삭제되었습니다. 등 숨김) -->
     {% block content %}{% endblock %}
   </main>
 
