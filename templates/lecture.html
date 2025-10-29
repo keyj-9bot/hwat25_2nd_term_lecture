@@ -2,21 +2,41 @@
 {% block content %}
 <h3 class="fw-bold text-center mb-4">💬 강의자료 및 Q&A</h3>
 
+<!-- flash 메시지 출력 -->
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-warning">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
 <!-- 질문 등록 폼 -->
 <div class="card p-4 mb-5 shadow-sm">
   <h5 class="fw-bold mb-3">질문 등록</h5>
-  <form method="POST" action="{{ url_for('add_question') }}">
+  <form method="POST" action="{{ url_for('add_question') }}" onsubmit="return checkPassword();">
     <input type="text" name="title" class="form-control mb-2" placeholder="제목을 입력하세요" required>
     <textarea name="content" class="form-control mb-2" rows="3" placeholder="질문 내용을 입력하세요" required></textarea>
-    <input type="password" name="password"
+    <input type="password" id="questionPwd" name="password"
       class="form-control mb-2"
-      placeholder="질문 비밀번호 (4자리 이상)"
-      pattern="\d{4,}"
-      title="비밀번호는 숫자 4자리 이상이어야 합니다"
+      placeholder="질문 비밀번호 (정확히 4자리)"
+      pattern="\\d{4}"
+      title="비밀번호는 숫자 4자리여야 합니다"
       required>
     <button type="submit" class="btn btn-primary w-100">등록하기</button>
   </form>
 </div>
+
+<script>
+function checkPassword() {
+  const pwd = document.getElementById("questionPwd").value.trim();
+  if (!/^\d{4}$/.test(pwd)) {
+    alert("비밀번호는 정확히 4자리 숫자로 입력하세요.");
+    return false;
+  }
+  return true;
+}
+</script>
 
 <!-- 질문 목록 -->
 {% if questions %}
@@ -36,6 +56,7 @@
       </form>
     </div>
 
+    <!-- 댓글 -->
     <div class="card-footer bg-light">
       <h6 class="fw-bold mb-2">💭 댓글</h6>
       {% for c in comments if c.qid == q.id %}
