@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화트25 강의자료 학습 & Q&A 시스템 (최종 완전판)
+📘 연암공대 화트25 학습사이트 (강의자료 + Q&A 통합 완전판)
 작성자: Key 교수님
 """
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 import pandas as pd
-import os
+import os, re
 from datetime import datetime
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
 
-# ──────────────── 설정 ────────────────
+# ─────────────── 설정 ───────────────
 DATA_LECTURE = "lecture_data.csv"
 DATA_QUESTIONS = "questions.csv"
 DATA_COMMENTS = "comments.csv"
@@ -21,7 +20,7 @@ ALLOWED_EMAILS = "allowed_emails.txt"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ──────────────── CSV 로드/저장 ────────────────
+# ─────────────── CSV 로드/저장 ───────────────
 def load_csv(path, cols):
     if os.path.exists(path):
         try:
@@ -33,7 +32,11 @@ def load_csv(path, cols):
 def save_csv(path, df):
     df.to_csv(path, index=False, encoding="utf-8-sig")
 
-# ──────────────── 홈 (로그인) ────────────────
+# ─────────────── 파일명 정제 (한글 유지 + 특수문자 제거) ───────────────
+def clean_filename(name):
+    return re.sub(r'[\\/:*?"<>|]', '_', name)
+
+# ─────────────── 홈(로그인) ───────────────
 @app.route("/", methods=["GET", "POST"])
 def home():
     if request.method == "POST":
@@ -55,7 +58,7 @@ def home():
 
     return render_template("home.html")
 
-# ──────────────── 강의자료 학습(Q&A) ────────────────
+# ─────────────── 학습 사이트 (강의자료 + Q&A) ───────────────
 @app.route("/lecture")
 def lecture():
     if "email" not in session:
@@ -65,6 +68,9 @@ def lecture():
     questions = load_csv(DATA_QUESTIONS, ["id", "email", "title", "content", "created_at"])
     comments = load_csv(DATA_COMMENTS, ["cid", "qid", "email", "content", "created_at"])
 
+    if not lectures.empty:
+        lectures = lectures.sort_values(by="uploaded_at", ascending=False).reset_index(drop=True)
+
     return render_template("lecture.html",
                            lectures=lectures.to_dict(orient="records"),
                            questions=questions.to_dict(orient="records"),
@@ -72,12 +78,58 @@ def lecture():
                            role=session.get("role"),
                            email=session.get("email"))
 
-# ──────────────── 질문 등록/삭제 ────────────────
+# ─────────────── 교수 업로드 ───────────────
+@app.route("/upload_lecture", methods=["GET", "POST"])
+def upload_lecture():
+    if "role" not in session or session["role"] != "professor":
+        flash("교수 전용 페이지입니다.")
+        return redirect(url_for("lecture"))
+
+    df = load_csv(DATA_LECTURE, ["title", "content", "file_name", "site_links", "uploaded_at"])
+
+    if request.method == "POST":
+        title = request.form.get("title")
+        content = request.form.get("content")
+        site_links = "; ".join(request.form.getlist("site_link"))
+
+        uploaded_files = request.files.getlist("files")
+        saved_files = []
+
+        for file in uploaded_files:
+            if file and file.filename:
+                filename = clean_filename(file.filename)
+                file.save(os.path.join(UPLOAD_FOLDER, filename))
+                saved_files.append(filename)
+
+        new_row = {
+            "title": title,
+            "content": content,
+            "file_name": ", ".join(saved_files),
+            "site_links": site_links,
+            "uploaded_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        save_csv(DATA_LECTURE, df)
+        flash("📘 강의자료가 업로드되었습니다.")
+        return redirect(url_for("upload_lecture"))
+
+    return render_template("upload_lecture.html")
+
+# ─────────────── 강의자료 삭제 ───────────────
+@app.route("/delete_lecture/<int:index>", methods=["POST"])
+def delete_lecture(index):
+    df = load_csv(DATA_LECTURE, ["title", "content", "file_name", "site_links", "uploaded_at"])
+    if not df.empty and 0 <= index < len(df):
+        df = df.drop(index).reset_index(drop=True)
+        save_csv(DATA_LECTURE, df)
+        flash("🗑️ 자료가 삭제되었습니다.")
+    return redirect(url_for("lecture"))
+
+# ─────────────── 질문 및 댓글 기능 ───────────────
 @app.route("/add_question", methods=["POST"])
 def add_question():
     if "email" not in session:
         return redirect(url_for("home"))
-
     df = load_csv(DATA_QUESTIONS, ["id", "email", "title", "content", "created_at"])
     new_row = {
         "id": len(df) + 1,
@@ -103,7 +155,6 @@ def delete_question(qid):
         flash("⚠️ 본인 질문만 삭제할 수 있습니다.")
     return redirect(url_for("lecture"))
 
-# ──────────────── 댓글 등록/삭제 ────────────────
 @app.route("/add_comment/<int:qid>", methods=["POST"])
 def add_comment(qid):
     df = load_csv(DATA_COMMENTS, ["cid", "qid", "email", "content", "created_at"])
@@ -131,48 +182,6 @@ def delete_comment(cid):
         flash("⚠️ 본인 댓글만 삭제할 수 있습니다.")
     return redirect(url_for("lecture"))
 
-# ──────────────── 교수 업로드 ────────────────
-@app.route("/upload_lecture", methods=["GET", "POST"])
-def upload_lecture():
-    if "role" not in session or session["role"] != "professor":
-        flash("교수 전용 페이지입니다.")
-        return redirect(url_for("lecture"))
-
-    df = load_csv(DATA_LECTURE, ["title", "content", "file_name", "site_links", "uploaded_at"])
-
-    if request.method == "POST":
-        title = request.form.get("title")
-        content = request.form.get("content")
-        site_links = "; ".join(request.form.getlist("site_link"))
-
-        file = request.files.get("file")
-        filename = ""
-        if file and file.filename:
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(UPLOAD_FOLDER, filename))
-
-        new_row = {
-            "title": title,
-            "content": content,
-            "file_name": filename,
-            "site_links": site_links,
-            "uploaded_at": datetime.now().strftime("%Y-%m-%d %H:%M")
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        save_csv(DATA_LECTURE, df)
-        flash("📘 강의자료가 업로드되었습니다.")
-        return redirect(url_for("upload_lecture"))
-
-    return render_template("upload_lecture.html", lectures=df.to_dict(orient="records"))
-
-@app.route("/delete_lecture/<string:title>", methods=["POST"])
-def delete_lecture(title):
-    df = load_csv(DATA_LECTURE, ["title", "content", "file_name", "site_links", "uploaded_at"])
-    df = df[df["title"] != title]
-    save_csv(DATA_LECTURE, df)
-    flash("🗑️ 자료가 삭제되었습니다.")
-    return redirect(url_for("upload_lecture"))
-
 @app.route("/download/<filename>")
 def download(filename):
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
@@ -184,3 +193,4 @@ def logout():
 
 if __name__ == "__main__":
     app.run(debug=True)
+

@@ -5,30 +5,16 @@
 <form method="POST" enctype="multipart/form-data">
   <input type="text" name="title" class="form-control mb-2" placeholder="자료 제목" required>
   <textarea name="content" class="form-control mb-2" rows="2" placeholder="내용 입력" required></textarea>
-  <input type="file" name="file" class="form-control mb-2">
-  <div id="siteInputs">
+  <input type="file" name="files" class="form-control mb-2" multiple>
+
+  <div id="siteInputs" class="mb-2">
     <input type="text" name="site_link" class="form-control mb-1" placeholder="https://...">
   </div>
   <button type="button" class="btn btn-outline-primary btn-sm" onclick="addSiteInput()">＋ 추가</button>
   <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSiteInput()">－ 삭제</button>
+
   <button type="submit" class="btn btn-success w-100 mt-3">📤 업로드</button>
 </form>
-
-<hr>
-<h4>📚 업로드된 자료</h4>
-{% for lec in lectures %}
-<div class="border rounded p-3 mb-3">
-  <h5>{{ lec.title }}</h5>
-  <p>{{ lec.content }}</p>
-  {% if lec.file_name %}
-  <a href="{{ url_for('download', filename=lec.file_name) }}">📥 파일 다운로드</a><br>
-  {% endif %}
-  {% if lec.site_links %}<small>🔗 {{ lec.site_links }}</small>{% endif %}
-  <form method="POST" action="{{ url_for('delete_lecture', title=lec.title) }}">
-    <button type="submit" class="btn btn-sm btn-danger mt-2">🗑️ 삭제</button>
-  </form>
-</div>
-{% endfor %}
 
 <script>
 function addSiteInput(){
@@ -42,5 +28,6 @@ function removeSiteInput(){
 }
 </script>
 {% endblock %}
+
 
 

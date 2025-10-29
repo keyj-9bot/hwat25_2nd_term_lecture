@@ -1,62 +1,93 @@
 {% extends "base.html" %}
 {% block content %}
-<h3 class="fw-bold text-center mb-4">📚 강의자료 학습 및 Q&A</h3>
 
-<!-- 강의자료 -->
+<h3 class="fw-bold mb-4">🎓 학습 사이트</h3>
+
+<!-- 📘 강의자료 표시 -->
 {% for lec in lectures %}
-<div class="card p-3 mb-4 shadow-sm">
-  <h5>{{ lec.title }}</h5>
+<div class="border rounded p-3 mb-4 bg-white shadow-sm">
+  <h5 class="fw-bold text-primary">{{ lec.title }}</h5>
   <p>{{ lec.content }}</p>
+
   {% if lec.file_name %}
-  <a href="{{ url_for('download', filename=lec.file_name) }}">📥 파일 다운로드</a><br>
+  <div class="mb-2">
+    {% for file in lec.file_name.split(',') %}
+      <div>📄 
+        <a href="{{ url_for('download', filename=file.strip()) }}" target="_blank">
+          {{ file.strip() }}
+        </a>
+      </div>
+    {% endfor %}
+  </div>
   {% endif %}
-  {% if lec.site_links %}<small>🔗 {{ lec.site_links }}</small>{% endif %}
+
+  {% if lec.site_links %}
+  <div class="mb-2">
+    {% for link in lec.site_links.split(';') %}
+      <div>🔗 
+        <a href="{{ link.strip() }}" target="_blank">
+          {{ link.strip() }}
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="mt-2">
+    <small class="text-muted">업로드: {{ lec.uploaded_at }}</small>
+    {% if role == "professor" %}
+    <form method="POST" action="{{ url_for('delete_lecture', index=loop.index0) }}" style="display:inline;">
+      <button type="submit" class="btn btn-sm btn-danger ms-2">🗑️ 삭제</button>
+    </form>
+    {% endif %}
+  </div>
 </div>
 {% endfor %}
 
-<!-- 질문 -->
-<div class="card p-4 shadow-sm">
-  <h5 class="fw-bold mb-3">질문 등록</h5>
-  <form method="POST" action="{{ url_for('add_question') }}">
-    <input type="text" name="title" class="form-control mb-2" placeholder="제목" required>
-    <textarea name="content" class="form-control mb-2" placeholder="질문 내용" required></textarea>
-    <button type="submit" class="btn btn-primary w-100">등록</button>
-  </form>
-</div>
-
 <hr>
-<h4 class="mt-4 mb-3">등록된 질문</h4>
+<h4 class="fw-bold mt-4 mb-3">💬 Q&A 게시판</h4>
+
+<!-- 질문 등록 -->
+<form method="POST" action="{{ url_for('add_question') }}" class="mb-3">
+  <input type="text" name="title" class="form-control mb-2" placeholder="질문 제목" required>
+  <textarea name="content" class="form-control mb-2" rows="2" placeholder="질문 내용 입력" required></textarea>
+  <button type="submit" class="btn btn-success">질문 등록</button>
+</form>
+
+<!-- 질문 목록 -->
 {% for q in questions %}
-<div class="border rounded p-3 mb-3">
-  <h5>{{ q.title }}</h5>
+<div class="border rounded p-3 mt-3 bg-light">
+  <strong>{{ q.title }}</strong>
   <p>{{ q.content }}</p>
   <small class="text-muted">{{ q.email }} | {{ q.created_at }}</small>
+
   {% if role == "professor" or q.email == email %}
   <form method="POST" action="{{ url_for('delete_question', qid=q.id) }}">
-    <button class="btn btn-sm btn-danger mt-2">삭제</button>
+    <button type="submit" class="btn btn-sm btn-outline-danger mt-1">삭제</button>
   </form>
   {% endif %}
 
   <!-- 댓글 -->
-  <div class="ms-3 mt-3">
-    <h6>💬 댓글</h6>
-    {% for c in comments if c.qid == q.id %}
-    <div class="border p-2 mb-2 bg-light">
-      {{ c.content }}<br>
-      <small class="text-muted">{{ c.email }} | {{ c.created_at }}</small>
-      {% if role == "professor" or c.email == email %}
-      <form method="POST" action="{{ url_for('delete_comment', cid=c.cid) }}">
-        <button class="btn btn-sm btn-outline-danger mt-1">삭제</button>
-      </form>
-      {% endif %}
-    </div>
-    {% endfor %}
-    <form method="POST" action="{{ url_for('add_comment', qid=q.id) }}">
-      <input type="text" name="content" class="form-control mb-2" placeholder="댓글 입력..." required>
-      <button type="submit" class="btn btn-outline-primary btn-sm">등록</button>
+  {% for c in comments if c.qid == q.id %}
+  <div class="border p-2 mt-2 bg-white">
+    <small>{{ c.email }} | {{ c.created_at }}</small>
+    <p class="mb-1">{{ c.content }}</p>
+    {% if role == "professor" or c.email == email %}
+    <form method="POST" action="{{ url_for('delete_comment', cid=c.cid) }}">
+      <button type="submit" class="btn btn-sm btn-outline-danger">댓글 삭제</button>
     </form>
+    {% endif %}
   </div>
+  {% endfor %}
+
+  <!-- 댓글 등록 -->
+  <form method="POST" action="{{ url_for('add_comment', qid=q.id) }}">
+    <input type="text" name="content" class="form-control mt-2" placeholder="댓글 입력..." required>
+    <button type="submit" class="btn btn-sm btn-outline-primary mt-1">댓글 등록</button>
+  </form>
 </div>
 {% endfor %}
+
 {% endblock %}
+
 

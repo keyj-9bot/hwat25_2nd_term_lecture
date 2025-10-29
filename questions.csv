@@ -1,1 +1,2 @@
-id,email,question,password,created_at
+﻿id,email,question,password,created_at,title,content
+1,l16592g@yc.ac.kr,,,2025-10-29 16:52,오비탈,이해가 잘 안됨
