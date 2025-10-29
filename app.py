@@ -28,15 +28,22 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path, cols):
-    if os.path.exists(path):
-        try:
-            return pd.read_csv(path)
-        except:
-            pass
+    try:
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            missing_cols = [c for c in cols if c not in df.columns]
+            for col in missing_cols:
+                df[col] = ""
+            return df[cols]
+    except Exception as e:
+        print(f"[CSV Load Error] {path}: {e}")
     return pd.DataFrame(columns=cols)
 
 def save_csv(path, df):
-    df.to_csv(path, index=False, encoding="utf-8-sig")
+    try:
+        df.to_csv(path, index=False, encoding="utf-8-sig")
+    except Exception as e:
+        print(f"[CSV Save Error] {path}: {e}")
 
 # ───────────── 기본 라우트 ─────────────
 @app.route("/")
@@ -51,11 +58,10 @@ def login():
             flash("이메일을 입력하세요.", "danger")
             return redirect(url_for("login"))
 
+        allowed = []
         if os.path.exists(ALLOWED_EMAILS):
             with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
                 allowed = [e.strip() for e in f.readlines() if e.strip()]
-        else:
-            allowed = []
 
         if email in allowed:
             session["email"] = email
@@ -65,6 +71,7 @@ def login():
         else:
             flash("등록되지 않은 이메일입니다.", "danger")
             return redirect(url_for("login"))
+
     return render_template("login.html")
 
 @app.route("/home")
@@ -89,26 +96,32 @@ def upload_lecture():
         flash("로그인이 필요합니다.", "warning")
         return redirect(url_for("login"))
 
-    with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
-        allowed = [e.strip() for e in f.readlines() if e.strip()]
-    if email != allowed[0]:
+    allowed = []
+    if os.path.exists(ALLOWED_EMAILS):
+        with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
+            allowed = [e.strip() for e in f.readlines() if e.strip()]
+
+    if not allowed or email != allowed[0]:
         flash("접근 권한이 없습니다.", "danger")
         return redirect(url_for("home"))
 
     df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])
     if request.method == "POST":
-        title = request.form["title"]
-        content = request.form["content"]
-        links = "; ".join([v for k, v in request.form.items() if k.startswith("link") and v])
+        title = request.form["title"].strip()
+        content = request.form["content"].strip()
+        links = "; ".join([v for k, v in request.form.items() if k.startswith("link") and v.strip()])
         filenames = []
 
         if "files" in request.files:
             files = request.files.getlist("files")
             for file in files:
                 if file and file.filename:
-                    fname = secure_filename(file.filename)
-                    file.save(os.path.join(UPLOAD_FOLDER, fname))
-                    filenames.append(fname)
+                    # ⚙️ secure_filename + 한글 파일명 유지
+                    original_name = file.filename
+                    safe_name = secure_filename(original_name)
+                    save_path = os.path.join(UPLOAD_FOLDER, safe_name)
+                    file.save(save_path)
+                    filenames.append(original_name)
 
         df.loc[len(df)] = {
             "title": title,
@@ -123,9 +136,14 @@ def upload_lecture():
 
     return render_template("upload_lecture.html", lectures=df.to_dict("records"))
 
-@app.route("/uploads/<filename>")
+@app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    # 경로 문제 방지
+    try:
+        return send_from_directory(UPLOAD_FOLDER, filename)
+    except FileNotFoundError:
+        flash("파일을 찾을 수 없습니다.", "danger")
+        return redirect(url_for("lecture"))
 
 # ───────────── 학습 사이트 (강의자료 + Q&A) ─────────────
 @app.route("/lecture", methods=["GET", "POST"])
@@ -141,13 +159,15 @@ def lecture():
 
     # 15일 지난 강의자료 자동삭제
     today = datetime.now()
-    df_lecture = df_lecture[
-        df_lecture["date"].apply(
-            lambda d: (today - datetime.strptime(str(d), "%Y-%m-%d %H:%M")).days <= 15
-            if pd.notna(d)
-            else False
-        )
-    ]
+    valid_rows = []
+    for _, row in df_lecture.iterrows():
+        try:
+            d = datetime.strptime(str(row["date"]), "%Y-%m-%d %H:%M")
+            if (today - d).days <= 15:
+                valid_rows.append(row)
+        except:
+            continue
+    df_lecture = pd.DataFrame(valid_rows, columns=["title", "content", "files", "links", "date"])
     save_csv(DATA_LECTURE, df_lecture)
 
     # 질문 등록
@@ -155,8 +175,8 @@ def lecture():
         new_id = len(df_questions) + 1
         new_q = {
             "id": new_id,
-            "title": request.form["title"],
-            "content": request.form["content"],
+            "title": request.form["title"].strip(),
+            "content": request.form["content"].strip(),
             "email": email,
             "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
         }
@@ -197,7 +217,7 @@ def add_comment(question_id):
 def delete_question(q_id):
     email = session.get("email")
     df = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
-    df = df[df["id"] != q_id] if email else df
+    df = df[~((df["id"] == q_id) & (df["email"] == email))]
     save_csv(DATA_QUESTIONS, df)
     flash("질문이 삭제되었습니다.", "info")
     return redirect(url_for("lecture"))
