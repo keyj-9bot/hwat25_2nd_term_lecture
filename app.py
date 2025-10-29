@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화트25 강의자료 학습 & Q&A 시스템 (통합 로그인 + 교수 권한 완전판)
+📘 연암공대 화트25 강의자료 학습 & Q&A 시스템 (교수 확인게시 + 학생 열람 완전판)
 작성자: Key 교수님
 """
 
@@ -10,136 +10,195 @@ import os
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
+# ─────────────────────────────
+# 🌐 기본 설정
+# ─────────────────────────────
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-# ─────────────── 설정 ───────────────
 DATA_LECTURE = "lecture_data.csv"
 DATA_QUESTIONS = "questions.csv"
 DATA_COMMENTS = "comments.csv"
-ALLOWED_EMAILS = "allowed_emails.txt"  # 교수 이메일 목록
+ALLOWED_EMAILS = "allowed_emails.txt"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ─────────────── CSV 로드/저장 ───────────────
+
+# ─────────────────────────────
+# 📄 CSV 로드/저장
+# ─────────────────────────────
 def load_csv(path, cols):
     if os.path.exists(path):
         try:
             return pd.read_csv(path)
-        except:
+        except Exception:
             pass
     return pd.DataFrame(columns=cols)
+
 
 def save_csv(path, df):
     df.to_csv(path, index=False, encoding="utf-8-sig")
 
-# ─────────────── 로그인 확인 ───────────────
+
+# ─────────────────────────────
+# 🔑 로그인 확인
+# ─────────────────────────────
 def check_login():
     return "email" in session
 
-def is_professor():
-    """현재 로그인한 사용자가 allowed_emails.txt의 첫 번째 교수인지 확인"""
-    if not check_login():
-        return False
-    if not os.path.exists(ALLOWED_EMAILS):
-        return False
-    with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
-        allowed_emails = [line.strip() for line in f if line.strip()]
-    if len(allowed_emails) == 0:
-        return False
-    return session.get("email") == allowed_emails[0]
 
-# ─────────────── 홈 ───────────────
+# ─────────────────────────────
+# 🏠 기본 페이지
+# ─────────────────────────────
 @app.route("/")
 def home():
     return redirect(url_for("login"))
 
-# ─────────────── 통합 로그인 ───────────────
+
+# ─────────────────────────────
+# 👥 로그인 (교수·학생 공용)
+# ─────────────────────────────
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form.get("email", "").strip()
+        email = request.form.get("email", "").strip().lower()
 
-        # 이메일 형식 검사
-        if "@" not in email or "." not in email:
-            flash("⚠️ 유효한 이메일 주소를 입력하세요.")
-            return redirect(url_for("login"))
+        if not os.path.exists(ALLOWED_EMAILS):
+            flash("⚠️ allowed_emails.txt 파일이 없습니다.")
+            return render_template("login.html")
 
-        # 교수 이메일 목록 읽기
-        professors = []
-        if os.path.exists(ALLOWED_EMAILS):
-            with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
-                professors = [line.strip() for line in f if line.strip()]
+        with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
+            allowed = [line.strip().lower() for line in f if line.strip()]
+
+        if email not in allowed:
+            flash("❌ 등록된 이메일만 로그인할 수 있습니다.")
+            return render_template("login.html")
 
         session["email"] = email
-        flash("✅ 로그인 성공했습니다.")
+        session["role"] = "professor" if email == allowed[0] else "student"
 
-        # 첫 번째 교수 이메일이면 업로드 권한 부여
-        if len(professors) > 0 and email == professors[0]:
-            session["role"] = "professor"
+        if session["role"] == "professor":
+            flash("👨‍🏫 교수님 환영합니다.")
             return redirect(url_for("upload_lecture"))
         else:
-            session["role"] = "student"
+            flash("👩‍🎓 학생 로그인 완료.")
             return redirect(url_for("lecture"))
 
     return render_template("login.html")
 
-# ─────────────── 로그아웃 ───────────────
+
+# ─────────────────────────────
+# 🚪 로그아웃
+# ─────────────────────────────
 @app.route("/logout")
 def logout():
     session.clear()
     flash("로그아웃되었습니다.")
     return redirect(url_for("login"))
 
-# ─────────────── 강의자료 업로드 ───────────────
+
+# ─────────────────────────────
+# 📤 강의자료 업로드 (교수 전용)
+# ─────────────────────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    if not check_login():
-        return redirect(url_for("login"))
-
-    # 교수만 접근 가능
-    if not is_professor():
-        flash("⚠️ 교수님만 접근할 수 있습니다.")
+    if not check_login() or session.get("role") != "professor":
+        flash("⚠️ 교수 전용 페이지입니다.")
         return redirect(url_for("lecture"))
 
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])
+    df = load_csv(DATA_LECTURE, ["id", "title", "content", "files", "links", "date", "confirmed"])
 
     if request.method == "POST":
         title = request.form["title"]
         content = request.form["content"]
         date = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        files = []
+        # 파일 업로드
+        uploaded_files = []
         for file in request.files.getlist("files"):
             if file and file.filename:
                 filename = secure_filename(file.filename)
-                save_path = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(save_path)
-                files.append(filename)
+                file.save(os.path.join(UPLOAD_FOLDER, filename))
+                uploaded_files.append(filename)
 
         links = [v for k, v in request.form.items() if k.startswith("link") and v.strip()]
+        new_id = len(df) + 1
 
         new_row = pd.DataFrame([{
+            "id": new_id,
             "title": title,
             "content": content,
-            "files": ";".join(files),
+            "files": ";".join(uploaded_files),
             "links": ";".join(links),
-            "date": date
+            "date": date,
+            "confirmed": False
         }])
+
         df = pd.concat([df, new_row], ignore_index=True)
         save_csv(DATA_LECTURE, df)
-        flash("📚 강의자료가 업로드되었습니다.")
+        flash("📘 강의자료가 업로드되었습니다. (확인 버튼 클릭 시 학습사이트에 게시됩니다.)")
         return redirect(url_for("upload_lecture"))
 
     return render_template("upload_lecture.html", lectures=df.to_dict("records"))
 
-# ─────────────── 학습 사이트(Q&A) ───────────────
+
+# ─────────────────────────────
+# ✅ 강의자료 게시(확인)
+# ─────────────────────────────
+@app.route("/confirm_lecture/<int:lec_id>", methods=["POST"])
+def confirm_lecture(lec_id):
+    df = load_csv(DATA_LECTURE, ["id", "title", "content", "files", "links", "date", "confirmed"])
+    df.loc[df["id"] == lec_id, "confirmed"] = True
+    save_csv(DATA_LECTURE, df)
+    flash("✅ 학습사이트에 게시되었습니다.")
+    return redirect(url_for("upload_lecture"))
+
+
+# ─────────────────────────────
+# ✏️ 강의자료 수정
+# ─────────────────────────────
+@app.route("/edit_lecture/<int:lec_id>", methods=["GET", "POST"])
+def edit_lecture(lec_id):
+    if session.get("role") != "professor":
+        return redirect(url_for("lecture"))
+
+    df = load_csv(DATA_LECTURE, ["id", "title", "content", "files", "links", "date", "confirmed"])
+    lec = df.loc[df["id"] == lec_id].iloc[0]
+
+    if request.method == "POST":
+        df.loc[df["id"] == lec_id, "title"] = request.form["title"]
+        df.loc[df["id"] == lec_id, "content"] = request.form["content"]
+        df.loc[df["id"] == lec_id, "links"] = ";".join([v for k, v in request.form.items() if k.startswith("link") and v.strip()])
+        save_csv(DATA_LECTURE, df)
+        flash("✏️ 수정이 완료되었습니다.")
+        return redirect(url_for("upload_lecture"))
+
+    return render_template("edit_lecture.html", lec=lec)
+
+
+# ─────────────────────────────
+# 🗑️ 강의자료 삭제
+# ─────────────────────────────
+@app.route("/delete_lecture/<int:lec_id>", methods=["POST"])
+def delete_lecture(lec_id):
+    df = load_csv(DATA_LECTURE, ["id", "title", "content", "files", "links", "date", "confirmed"])
+    df = df[df["id"] != lec_id]
+    save_csv(DATA_LECTURE, df)
+    flash("🗑️ 강의자료가 삭제되었습니다.")
+    return redirect(url_for("upload_lecture"))
+
+
+# ─────────────────────────────
+# 💬 학습사이트 (학생/교수 공용)
+# ─────────────────────────────
 @app.route("/lecture", methods=["GET", "POST"])
 def lecture():
+    l_df = load_csv(DATA_LECTURE, ["id", "title", "content", "files", "links", "date", "confirmed"])
     q_df = load_csv(DATA_QUESTIONS, ["id", "email", "title", "content", "date"])
     c_df = load_csv(DATA_COMMENTS, ["question_id", "email", "comment", "date"])
-    l_df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])  # ✅ 추가
+
+    lectures = l_df[l_df["confirmed"] == True]  # 게시된 자료만 표시
 
     if request.method == "POST":
         new_id = len(q_df) + 1
@@ -155,15 +214,17 @@ def lecture():
 
     return render_template(
         "lecture.html",
+        lectures=lectures.to_dict("records"),
         questions=q_df.to_dict("records"),
         comments=c_df.to_dict("records"),
-        lectures=l_df.to_dict("records"),  # ✅ 추가
-        is_prof=(session.get("email") in open(ALLOWED_EMAILS, encoding="utf-8").read())
+        email=session.get("email"),
+        role=session.get("role")
     )
 
 
-
-# ─────────────── 댓글 등록 ───────────────
+# ─────────────────────────────
+# 💭 댓글 등록
+# ─────────────────────────────
 @app.route("/add_comment/<int:question_id>", methods=["POST"])
 def add_comment(question_id):
     email = session.get("email", "익명")
@@ -173,46 +234,21 @@ def add_comment(question_id):
     df = load_csv(DATA_COMMENTS, ["question_id", "email", "comment", "date"])
     df.loc[len(df)] = [question_id, email, comment, date]
     save_csv(DATA_COMMENTS, df)
-    flash("댓글이 등록되었습니다.")
+    flash("💬 댓글이 등록되었습니다.")
     return redirect(url_for("lecture"))
 
-# ─────────────── 질문/댓글 삭제 (교수 전용) ───────────────
-@app.route("/delete_question/<int:question_id>")
-def delete_question(question_id):
-    if not is_professor():
-        flash("⚠️ 교수님만 삭제할 수 있습니다.")
-        return redirect(url_for("lecture"))
 
-    q_df = load_csv(DATA_QUESTIONS, ["id", "email", "title", "content", "date"])
-    c_df = load_csv(DATA_COMMENTS, ["question_id", "email", "comment", "date"])
-
-    q_df = q_df[q_df["id"] != question_id]
-    c_df = c_df[c_df["question_id"] != question_id]
-
-    save_csv(DATA_QUESTIONS, q_df)
-    save_csv(DATA_COMMENTS, c_df)
-    flash("🗑️ 질문과 관련 댓글이 모두 삭제되었습니다.")
-    return redirect(url_for("lecture"))
-
-@app.route("/delete_comment/<int:comment_index>")
-def delete_comment(comment_index):
-    if not is_professor():
-        flash("⚠️ 교수님만 삭제할 수 있습니다.")
-        return redirect(url_for("lecture"))
-
-    c_df = load_csv(DATA_COMMENTS, ["question_id", "email", "comment", "date"])
-    if comment_index < len(c_df):
-        c_df = c_df.drop(index=comment_index)
-        save_csv(DATA_COMMENTS, c_df)
-        flash("💬 댓글이 삭제되었습니다.")
-    return redirect(url_for("lecture"))
-
-# ─────────────── 파일 다운로드 ───────────────
+# ─────────────────────────────
+# 📁 파일 다운로드
+# ─────────────────────────────
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
-# ─────────────── 캐시 무효화 ───────────────
+
+# ─────────────────────────────
+# 🚫 캐시 무효화
+# ─────────────────────────────
 @app.after_request
 def add_header(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -220,6 +256,10 @@ def add_header(response):
     response.headers["Expires"] = "0"
     return response
 
+
+# ─────────────────────────────
+# 🚀 실행
+# ─────────────────────────────
 if __name__ == "__main__":
     app.run(debug=True)
 

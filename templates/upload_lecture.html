@@ -2,12 +2,10 @@
 {% block content %}
 <h3 class="fw-bold mb-3">📘 강의자료 업로드</h3>
 
-<!-- 🔹 업로드 폼 -->
 <form method="POST" enctype="multipart/form-data">
   <input type="text" name="title" class="form-control mb-2" placeholder="자료 제목" required>
   <textarea name="content" class="form-control mb-2" rows="2" placeholder="내용 입력" required></textarea>
 
-  <!-- ✅ 파일 입력칸 -->
   <div id="fileInputs">
     <input type="file" name="files" class="form-control mb-1">
   </div>
@@ -16,7 +14,6 @@
     <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
   </div>
 
-  <!-- ✅ 링크 입력칸 -->
   <div id="linkInputs">
     <input type="text" name="link1" class="form-control mb-1" placeholder="https:// 관련 사이트 링크">
   </div>
@@ -29,8 +26,6 @@
 </form>
 
 <hr>
-
-<!-- ✅ 업로드된 자료 표시 -->
 <h4 class="fw-bold mt-4">📚 업로드된 자료</h4>
 {% if lectures %}
   {% for lec in lectures %}
@@ -39,7 +34,7 @@
     <p>{{ lec.content }}</p>
 
     {% if lec.files %}
-      <p class="mb-1">📎 파일:
+      <p>📎 파일:
         {% for f in lec.files.split(';') %}
           <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
@@ -47,7 +42,7 @@
     {% endif %}
 
     {% if lec.links %}
-      <p class="mb-1">🔗 관련 링크:
+      <p>🔗 링크:
         {% for l in lec.links.split(';') %}
           <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
@@ -55,10 +50,24 @@
     {% endif %}
 
     <small class="text-muted">업로드: {{ lec.date }}</small>
+
+    <div class="mt-2">
+      {% if lec.confirmed == False %}
+        <form action="{{ url_for('confirm_lecture', lec_id=lec.id) }}" method="POST" style="display:inline;">
+          <button class="btn btn-sm btn-outline-success">✅ 확인(게시)</button>
+        </form>
+      {% else %}
+        <span class="badge bg-success">게시 완료</span>
+      {% endif %}
+
+      <form action="{{ url_for('delete_lecture', lec_id=lec.id) }}" method="POST" style="display:inline;">
+        <button class="btn btn-sm btn-outline-danger">🗑️ 삭제</button>
+      </form>
+    </div>
   </div>
   {% endfor %}
 {% else %}
-  <p class="text-muted">아직 등록된 자료가 없습니다.</p>
+  <p class="text-muted">등록된 자료가 없습니다.</p>
 {% endif %}
 
 <script>
@@ -86,6 +95,7 @@ function removeLinkInput() {
 }
 </script>
 {% endblock %}
+
 
 
 
