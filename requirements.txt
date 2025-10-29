@@ -1,7 +1,7 @@
+
 Flask==3.1.2
-pandas==2.1.4 --only-binary=:all:
+pandas==2.2.3
 gunicorn==23.0.0
 requests==2.32.3
 beautifulsoup4==4.14.2
 skyfield==1.53
-
