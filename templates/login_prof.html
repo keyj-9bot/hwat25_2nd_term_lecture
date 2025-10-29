@@ -1,16 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-<h3 class="fw-bold text-center mb-4">🧑‍🏫 교수 업로드 사이트</h3>
-
-<form method="POST" autocomplete="off">
-  <input type="text" name="username" class="form-control mb-3" placeholder="아이디" autocomplete="off" required>
-  <input type="password" name="password" class="form-control mb-3" placeholder="비밀번호" autocomplete="off" required>
-  <button type="submit" class="btn btn-success w-100">로그인</button>
-</form>
-
-{% if error %}
-  <div class="alert alert-danger mt-3">{{ error }}</div>
-{% endif %}
-
-<a href="{{ url_for('home') }}" class="btn btn-outline-primary w-100 mt-3">🏠 홈으로 돌아가기</a>
+<div class="container mt-4">
+  <h3>👨‍🏫 교수 로그인</h3>
+  <form method="POST" action="{{ url_for('login') }}">
+    <div class="mb-3">
+      <label for="email" class="form-label">이메일</label>
+      <input type="email" class="form-control" name="email" required placeholder="example@yc.ac.kr">
+    </div>
+    <button type="submit" class="btn btn-primary">로그인</button>
+  </form>
+</div>
 {% endblock %}

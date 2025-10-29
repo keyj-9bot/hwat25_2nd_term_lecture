@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>👨‍🏫 교수 로그인</h2>
-<form method="POST" action="/login">
-  <input type="text" name="username" placeholder="아이디" required><br><br>
-  <input type="password" name="password" placeholder="비밀번호" required><br><br>
-  <button type="submit">로그인</button>
-</form>
-
-{% if error %}
-<p style="color:red;">{{ error }}</p>
-{% endif %}
+<div class="container mt-4">
+  <h3>👨‍🏫 교수 로그인</h3>
+  <form method="POST" action="{{ url_for('login') }}">
+    <div class="mb-3">
+      <label for="email" class="form-label">이메일</label>
+      <input type="email" class="form-control" name="email" required placeholder="example@yc.ac.kr">
+    </div>
+    <button type="submit" class="btn btn-primary">로그인</button>
+  </form>
+</div>
 {% endblock %}
 

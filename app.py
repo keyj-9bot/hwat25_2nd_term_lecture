@@ -43,22 +43,29 @@ def check_login():
     return "email" in session
 
 
-@app.route("/", methods=["GET", "POST"])
+# ──────────────── 로그인 ────────────────
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form["email"].strip()
-        if not os.path.exists(ALLOWED_EMAILS):
-            flash("승인된 이메일 목록 파일이 없습니다.")
-            return redirect(url_for("login"))
-        with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
-            allowed = [e.strip() for e in f.readlines()]
+        email = request.form.get("email", "").strip()
+
+        # 허용된 이메일만 로그인 허용
+        if os.path.exists(ALLOWED_EMAILS):
+            with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
+                allowed = [line.strip() for line in f.readlines()]
+        else:
+            allowed = []
+
         if email in allowed:
             session["email"] = email
-            flash("로그인 성공했습니다.")
-            return redirect(url_for("lecture"))
+            flash(f"✅ 로그인 성공: {email}")
+            return redirect(url_for("upload_lecture"))
         else:
-            flash("허용되지 않은 이메일입니다.")
+            flash("❌ 등록되지 않은 이메일입니다.")
+            return redirect(url_for("login"))
+
     return render_template("login.html")
+
 
 
 @app.route("/logout")
