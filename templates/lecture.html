@@ -1,74 +1,82 @@
+
 {% extends "base.html" %}
 {% block content %}
 
 <h3 class="fw-bold mb-4">📘 강의자료 목록</h3>
 
 {% if lectures %}
-<table class="table table-bordered align-middle text-center">
+<table class="table table-bordered text-center align-middle">
   <thead class="table-primary">
-    <tr>
-      <th>제목</th>
-      <th>내용</th>
-      <th>파일</th>
-      <th>사이트</th>
-      <th>업로드시각</th>
-    </tr>
+    <tr><th>제목</th><th>내용</th><th>파일</th><th>사이트</th><th>업로드시각</th></tr>
   </thead>
   <tbody>
     {% for lec in lectures %}
     <tr>
       <td>{{ lec.title }}</td>
       <td>{{ lec.content }}</td>
-      <td>
-        {% if lec.file_link %}
-          <a href="{{ lec.file_link }}" target="_blank">📂</a>
-        {% endif %}
-      </td>
-      <td>
-        {% if lec.site_link %}
-          <a href="{{ lec.site_link }}" target="_blank">🌐</a>
-        {% endif %}
-      </td>
-      {% if session.get('professor') %}
-        <td>{{ lec.uploaded_at }}</td>
-      {% else %}
-        <td>비공개</td>
-      {% endif %}
+      <td>{% if lec.file_link %}<a href="{{ lec.file_link }}" target="_blank">📂</a>{% endif %}</td>
+      <td>{% if lec.site_link %}<a href="{{ lec.site_link }}" target="_blank">🌐</a>{% endif %}</td>
+      <td>{{ lec.uploaded_at if session.get('professor') else '비공개' }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
-{% else %}
-<p class="text-muted">등록된 강의자료가 없습니다.</p>
 {% endif %}
 
 <hr class="my-4">
 <h4>💬 질문 등록</h4>
 
-<form method="POST" action="{{ url_for('lecture') }}">
-  <div class="mb-3">
-    <textarea name="question" class="form-control" rows="3" placeholder="질문을 입력하세요." required></textarea>
-  </div>
-  <div class="mb-3">
-    <input type="password" name="password" class="form-control" placeholder="비밀번호 (수정·삭제용)" required>
-  </div>
-  <button type="submit" class="btn btn-success w-100">질문 등록</button>
+<form method="POST">
+  <textarea name="new_question" class="form-control mb-2" rows="3" placeholder="질문을 입력하세요" required></textarea>
+  <input type="password" name="new_password" class="form-control mb-2" placeholder="비밀번호 (질문 수정·삭제용)" required>
+  <button type="submit" class="btn btn-success w-100">등록</button>
 </form>
 
 <hr class="my-4">
-<h4>🗒️ 질문 목록</h4>
+<h4>🗒️ 질문 목록 및 댓글</h4>
 
-{% if questions %}
-<ul class="list-group">
-  {% for q in questions %}
-  <li class="list-group-item">
-    <strong>{{ q.email }}</strong> ({{ q.created_at }})<br>
-    {{ q.question }}
-  </li>
-  {% endfor %}
-</ul>
-{% else %}
-<p class="text-muted">아직 질문이 없습니다.</p>
-{% endif %}
+{% for q in questions %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h6 class="text-muted">{{ q.email }} ({{ q.created_at }})</h6>
+    <p>{{ q.question }}</p>
 
+    <!-- 수정 -->
+    <form method="POST" class="mt-2">
+      <input type="hidden" name="qid" value="{{ q.id }}">
+      <input type="password" name="password" class="form-control mb-1" placeholder="비밀번호 확인">
+      <textarea name="edit_question" class="form-control mb-2" placeholder="수정할 내용을 입력하세요"></textarea>
+      <button class="btn btn-outline-warning btn-sm">수정</button>
+    </form>
+
+    <!-- 삭제 -->
+    <form method="POST" class="mt-1">
+      <input type="hidden" name="qid" value="{{ q.id }}">
+      <input type="password" name="password" class="form-control mb-2" placeholder="비밀번호 확인">
+      <button class="btn btn-outline-danger btn-sm" name="delete_question">삭제</button>
+    </form>
+
+    <hr>
+    <!-- 댓글 등록 -->
+    <form method="POST" class="d-flex mb-2">
+      <input type="hidden" name="qid" value="{{ q.id }}">
+      <input type="text" name="new_comment" class="form-control me-2" placeholder="댓글 입력" required>
+      <input type="password" name="comment_pw" class="form-control me-2" placeholder="비밀번호" required>
+      <button class="btn btn-outline-primary">등록</button>
+    </form>
+
+    <!-- 댓글 목록 -->
+    {% for c in comments if c.qid == q.id %}
+    <div class="ms-3 text-secondary border-start ps-2 mb-2">
+      ↳ <b>{{ c.email }}</b>: {{ c.comment }} ({{ c.created_at }})
+      <form method="POST" class="d-flex mt-1">
+        <input type="hidden" name="cid" value="{{ c.cid }}">
+        <input type="password" name="password" class="form-control form-control-sm me-2" placeholder="비밀번호 확인" required>
+        <button class="btn btn-sm btn-outline-danger" name="delete_comment">삭제</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
 {% endblock %}
