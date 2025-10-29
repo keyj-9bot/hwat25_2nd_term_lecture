@@ -50,29 +50,32 @@ def load_csv(path, cols):
 # 🏠 홈 (공통 로그인)
 # ─────────────────────────────
  
+
 @app.route("/", methods=["GET", "POST"], endpoint="home")
 def home():
     error = None
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         allowed = []
-        try:
-            with open(ALLOWED_FILE, "r", encoding="utf-8") as f:
-                allowed = [line.strip().lower() for line in f if line.strip()]
-        except Exception as e:
-            print(f"⚠️ allowed_emails.txt 로드 오류: {e}")
-            error = "이메일 확인 파일을 불러올 수 없습니다."
 
-        if email:
-            if email in allowed:
-                session["user"] = email
-                return redirect(url_for("lecture"))
-            else:
-                error = "등록되지 않은 이메일입니다."
-        else:
-            error = "이메일을 입력해주세요."
+        try:
+            # utf-8-sig로 시도 (BOM 포함 파일도 정상 인식)
+            with open(ALLOWED_FILE, "r", encoding="utf-8-sig") as f:
+                allowed = [line.strip().lower() for line in f if line.strip()]
+        except FileNotFoundError:
+            error = "⚠️ allowed_emails.txt 파일을 찾을 수 없습니다."
+        except Exception as e:
+            error = f"⚠️ allowed_emails.txt 읽기 오류: {e}"
+
+        # 로그인 처리
+        if email in allowed:
+            session["user"] = email
+            return redirect(url_for("lecture"))
+        elif not error:
+            error = "등록되지 않은 이메일입니다."
 
     return render_template("home.html", error=error)
+
 
 
 
