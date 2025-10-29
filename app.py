@@ -19,38 +19,49 @@ ALLOWED_FILE = "allowed_emails.txt"
 # ─────────────────────────────
 # 📂 데이터 로드/저장
 # ─────────────────────────────
-def load_csv(path, cols):
-    if os.path.exists(path):
-        try:
-            return pd.read_csv(path)
-        except:
-            pass
-    return pd.DataFrame(columns=cols)
 
-def save_csv(df, path):
-    df.to_csv(path, index=False, encoding="utf-8-sig")
+def load_csv(path, cols):
+    """CSV 로드 — 파일 없거나 비어있으면 자동 초기화"""
+    if not os.path.exists(path) or os.stat(path).st_size == 0:
+        return pd.DataFrame(columns=cols)
+    try:
+        df = pd.read_csv(path)
+        if df.empty:
+            return pd.DataFrame(columns=cols)
+        return df
+    except Exception:
+        return pd.DataFrame(columns=cols)
 
 # ─────────────────────────────
 # 🏠 홈 (공통 로그인)
 # ─────────────────────────────
+ 
 @app.route("/", methods=["GET", "POST"], endpoint="home")
 def home():
     error = None
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
+        allowed = []
         try:
             with open(ALLOWED_FILE, "r", encoding="utf-8") as f:
                 allowed = [line.strip().lower() for line in f if line.strip()]
-        except FileNotFoundError:
-            allowed = []
+        except Exception as e:
+            print(f"⚠️ allowed_emails.txt 로드 오류: {e}")
+            error = "이메일 확인 파일을 불러올 수 없습니다."
 
-        if email in allowed:
-            session["user"] = email
-            return redirect(url_for("lecture"))
+        if email:
+            if email in allowed:
+                session["user"] = email
+                return redirect(url_for("lecture"))
+            else:
+                error = "등록되지 않은 이메일입니다."
         else:
-            error = "등록되지 않은 이메일입니다."
+            error = "이메일을 입력해주세요."
 
     return render_template("home.html", error=error)
+
+
+
 
 # ─────────────────────────────
 # 📚 강의자료 + 질문 + 댓글 (등록/수정/삭제)
