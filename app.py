@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화트25 강의자료 학습 & Q&A 시스템 (세션 안정판 + 자동삭제 + Q&A)
+📘 연암공대 화트25 강의자료 학습 & Q&A 시스템 (세션 완전 안정판)
 작성자: Key 교수님
 """
 
@@ -13,18 +13,16 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
 
-# ✅ 세션 설정 (Render HTTPS 대응)
+# ✅ Render HTTPS 세션 완전호환 설정
 app.config.update(
-    SESSION_COOKIE_SECURE=True,
-    SESSION_COOKIE_SAMESITE="None",
-    SESSION_PERMANENT=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(hours=3)
+    SESSION_COOKIE_SECURE=True,        # HTTPS에서도 유지
+    SESSION_COOKIE_SAMESITE="None",    # 크로스도메인 허용
+    SESSION_PERMANENT=True,            # 브라우저 닫혀도 일정 시간 유지
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=3)  # 3시간 유지
 )
 
 # ─────────────── 설정 ───────────────
 DATA_LECTURE = "lecture_data.csv"
-DATA_QUESTIONS = "questions.csv"
-DATA_COMMENTS = "comments.csv"
 ALLOWED_EMAILS = "allowed_emails.txt"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -47,20 +45,10 @@ def save_csv(path, df):
     df.to_csv(path, index=False, encoding="utf-8-sig")
 
 
-# ─────────────── 자동 삭제(15일 경과자료) ───────────────
-def auto_delete_old_lectures():
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
-    if not df.empty:
-        now = datetime.now()
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df = df[df["date"].notna()]
-        df = df[df["date"] > now - timedelta(days=15)]
-        save_csv(DATA_LECTURE, df)
-
-
-# ─────────────── 기본 홈 ───────────────
+# ─────────────── 홈 (최상위 라우트 일원화) ───────────────
 @app.route("/")
-def index():
+def root():
+    # 세션이 있으면 바로 홈으로
     if "email" in session:
         return redirect(url_for("home"))
     return redirect(url_for("login"))
@@ -71,14 +59,17 @@ def index():
 def login():
     if request.method == "POST":
         email = request.form.get("email", "").strip()
+
         if not os.path.exists(ALLOWED_EMAILS):
             flash("허용된 이메일 목록 파일이 없습니다.", "error")
             return redirect(url_for("login"))
 
         with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
-            allowed = [e.strip() for e in f.readlines() if e.strip()]
+            allowed = [line.strip() for line in f if line.strip()]
 
         if email in allowed:
+            # ✅ 세션 생성
+            session.clear()
             session["email"] = email
             session.permanent = True
             flash("로그인 성공!", "success")
@@ -86,6 +77,10 @@ def login():
         else:
             flash("학교에 등록된 이메일이 아닙니다.", "error")
             return redirect(url_for("login"))
+
+    # 이미 로그인 상태라면 홈으로 보내기
+    if "email" in session:
+        return redirect(url_for("home"))
     return render_template("login.html")
 
 
@@ -114,15 +109,14 @@ def upload_lecture():
 
     email = session["email"]
     with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
-        allowed = [e.strip() for e in f.readlines() if e.strip()]
+        allowed = [line.strip() for line in f if line.strip()]
     professor_email = allowed[0] if allowed else None
 
     if email != professor_email:
         flash("교수만 접근할 수 있습니다.", "error")
-        return redirect(url_for("lecture"))
+        return redirect(url_for("home"))
 
     df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
-    auto_delete_old_lectures()
 
     if request.method == "POST":
         title = request.form["title"]
@@ -148,57 +142,6 @@ def upload_lecture():
 
     df.fillna("", inplace=True)
     return render_template("upload_lecture.html", lectures=df.to_dict("records"))
-
-
-# ─────────────── 학습 사이트 (Q&A 하단) ───────────────
-@app.route("/lecture", methods=["GET", "POST"])
-def lecture():
-    if "email" not in session:
-        return redirect(url_for("login"))
-
-    auto_delete_old_lectures()
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
-    lectures = df[df["confirmed"] == True].to_dict("records")
-
-    qdf = load_csv(DATA_QUESTIONS, ["id", "email", "question", "date"])
-    cdf = load_csv(DATA_COMMENTS, ["qid", "email", "comment", "date"])
-
-    if request.method == "POST":
-        qid = request.form.get("qid")
-        if "question" in request.form:
-            new_id = len(qdf) + 1
-            qdf.loc[len(qdf)] = [new_id, session["email"], request.form["question"], datetime.now().strftime("%Y-%m-%d %H:%M")]
-            save_csv(DATA_QUESTIONS, qdf)
-        elif "comment" in request.form:
-            cdf.loc[len(cdf)] = [qid, session["email"], request.form["comment"], datetime.now().strftime("%Y-%m-%d %H:%M")]
-            save_csv(DATA_COMMENTS, cdf)
-        return redirect(url_for("lecture"))
-
-    return render_template("lecture.html", lectures=lectures, questions=qdf.to_dict("records"), comments=cdf.to_dict("records"), email=session["email"])
-
-
-# ─────────────── Q&A 수정/삭제 ───────────────
-@app.route("/delete_question/<int:qid>")
-def delete_question(qid):
-    if "email" not in session:
-        return redirect(url_for("login"))
-    qdf = load_csv(DATA_QUESTIONS, ["id", "email", "question", "date"])
-    qdf = qdf[qdf["id"] != qid]
-    save_csv(DATA_QUESTIONS, qdf)
-    flash("질문이 삭제되었습니다.", "info")
-    return redirect(url_for("lecture"))
-
-
-@app.route("/delete_comment/<int:index>")
-def delete_comment(index):
-    if "email" not in session:
-        return redirect(url_for("login"))
-    cdf = load_csv(DATA_COMMENTS, ["qid", "email", "comment", "date"])
-    if 0 <= index < len(cdf):
-        cdf.drop(index=index, inplace=True)
-        save_csv(DATA_COMMENTS, cdf)
-    flash("댓글이 삭제되었습니다.", "info")
-    return redirect(url_for("lecture"))
 
 
 # ─────────────── 파일 보기 ───────────────
