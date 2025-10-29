@@ -232,6 +232,13 @@ def delete_comment(q_id, c_idx):
     flash("댓글이 삭제되었습니다.", "info")
     return redirect(url_for("lecture"))
 
+# ───────────── Health Check (Render 배포 안정화용) ─────────────
+@app.route("/health")
+def health():
+    return "OK", 200
+
+
+
 # ───────────── 앱 실행 ─────────────
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
