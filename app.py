@@ -43,6 +43,14 @@ def check_login():
     return "email" in session
 
 
+# ─────────────── 기본 홈 라우트 ───────────────
+@app.route("/")
+def home():
+    # 로그인 페이지로 자동 이동
+    return redirect(url_for("login_prof"))
+
+
+
 # ──────────────── 로그인 ────────────────
 @app.route("/login", methods=["GET", "POST"])
 def login():
