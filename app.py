@@ -206,6 +206,16 @@ def delete_lecture():
     save_csv(DATA_LECTURE, df)
     return redirect(url_for("upload_lecture"))
 
+
+# ─────────────────────────────
+# ✅ Render 헬스체크용
+# ─────────────────────────────
+@app.route("/health")
+def health():
+    return "OK", 200
+
+
 # ─────────────────────────────
 if __name__ == "__main__":
     app.run(debug=True)
+
