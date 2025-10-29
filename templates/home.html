@@ -1,18 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container text-center mt-5" style="max-width:420px;">
-  <h2 class="fw-bold mb-4">🏫 화트25 로그인</h2>
-  <form method="POST">
-    <input type="email" name="email" class="form-control mb-3" placeholder="학교 이메일 입력" required>
-    <button type="submit" class="btn btn-primary w-100">로그인</button>
-  </form>
+<div class="container mt-4 text-center">
+  <div class="alert alert-info">
+    <h5>로그인 성공!</h5>
+    <p>{{ email }} 계정으로 접속 중입니다.</p>
+  </div>
 
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div class="alert alert-danger mt-3">{{ messages[0] }}</div>
-    {% endif %}
-  {% endwith %}
+  <h3 class="mt-4">🏠 화트25 학습지원시스템 홈</h3>
+  <p>상단 메뉴에서 <b>강의자료 업로드</b> 또는 <b>학습 사이트</b>를 선택하세요.</p>
 </div>
 {% endblock %}
+
 
 
