@@ -1,30 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
+<h3 class="fw-bold text-center mb-4">🧑‍🏫 교수 업로드 사이트</h3>
 
-<div class="container text-center mt-5" style="max-width: 400px;">
-  <h2 class="fw-bold mb-4">👨‍🏫 교수 전용 업로드 로그인</h2>
-  <p class="text-muted mb-4">교수 계정으로만 접근이 가능합니다.</p>
+<form method="POST" autocomplete="off">
+  <input type="text" name="username" class="form-control mb-3" placeholder="아이디" autocomplete="off" required>
+  <input type="password" name="password" class="form-control mb-3" placeholder="비밀번호" autocomplete="off" required>
+  <button type="submit" class="btn btn-success w-100">로그인</button>
+</form>
 
-  <form method="POST" action="{{ url_for('login_prof') }}">
-    <div class="mb-3 text-start">
-      <label for="username" class="form-label fw-semibold">아이디</label>
-      <input type="text" class="form-control" id="username" name="username" placeholder="professor" required>
-    </div>
-    <div class="mb-3 text-start">
-      <label for="password" class="form-label fw-semibold">비밀번호</label>
-      <input type="password" class="form-control" id="password" name="password" placeholder="keypass" required>
-    </div>
-    <button type="submit" class="btn btn-success w-100 py-2 fw-bold">로그인</button>
-  </form>
+{% if error %}
+  <div class="alert alert-danger mt-3">{{ error }}</div>
+{% endif %}
 
-  {% if error %}
-  <div class="alert alert-danger mt-3" role="alert">
-    {{ error }}
-  </div>
-  {% endif %}
-
-  <hr class="my-5">
-  <a href="{{ url_for('home') }}" class="btn btn-outline-primary">🏠 홈으로 돌아가기</a>
-</div>
-
+<a href="{{ url_for('home') }}" class="btn btn-outline-primary w-100 mt-3">🏠 홈으로 돌아가기</a>
 {% endblock %}
