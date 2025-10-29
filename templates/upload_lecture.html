@@ -1,61 +1,70 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-4">
-    <h3>강의자료 업로드</h3>
-    <form method="post" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label>자료 제목</label>
-            <input type="text" name="title" class="form-control" required>
-        </div>
-        <div class="mb-3">
-            <label>내용 입력</label>
-            <textarea name="content" class="form-control" rows="3" required></textarea>
-        </div>
+<h3 class="mb-4">📂 강의자료 업로드</h3>
 
-        <div id="fileInputs">
-            <div class="mb-2">
-                <label>파일 선택</label>
-                <input type="file" name="files" class="form-control">
-            </div>
-        </div>
-        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addFileInput()">+ 추가</button>
-        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileInput()">- 삭제</button>
+<form method="POST" enctype="multipart/form-data">
+  <div class="mb-3">
+    <label class="form-label">자료 제목</label>
+    <input type="text" name="title" class="form-control" required>
+  </div>
 
-        <div id="linkInputs" class="mt-3">
-            <input type="text" name="links" class="form-control mb-2" placeholder="https://...">
-        </div>
-        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLinkInput()">+ 추가</button>
-        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLinkInput()">- 삭제</button>
+  <div class="mb-3">
+    <label class="form-label">내용</label>
+    <textarea name="content" class="form-control" required></textarea>
+  </div>
 
-        <div class="mt-3">
-            <button type="submit" class="btn btn-success w-100">업로드</button>
-        </div>
-    </form>
+  <div class="mb-3">
+    <label class="form-label">파일 선택</label>
+    <input type="file" name="files" multiple class="form-control">
+  </div>
+
+  <div id="link-section" class="mb-3">
+    <label class="form-label">관련 링크</label>
+    <input type="url" name="link1" class="form-control mb-2" placeholder="https://...">
+  </div>
+
+  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addLink()">+ 추가</button>
+  <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLink()">- 삭제</button>
+  <button type="submit" class="btn btn-success w-100 mt-3">업로드</button>
+</form>
+
+<hr>
+
+<h4 class="mt-4">📚 업로드된 강의자료</h4>
+{% for lecture in lectures %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h5>{{ lecture.title }}</h5>
+    <p>{{ lecture.content }}</p>
+    {% if lecture.files %}
+      {% for f in lecture.files.split(";") %}
+        <a href="{{ url_for('uploaded_file', filename=f) }}" target="_blank" class="d-block text-decoration-none">📎 {{ f }}</a>
+      {% endfor %}
+    {% endif %}
+    {% if lecture.links %}
+      {% for l in lecture.links.split(";") %}
+        <a href="{{ l }}" target="_blank" class="d-block">🔗 {{ l }}</a>
+      {% endfor %}
+    {% endif %}
+    <p class="text-muted small mt-2">업로드: {{ lecture.date }}</p>
+  </div>
 </div>
+{% endfor %}
 
 <script>
-function addFileInput() {
-    const div = document.createElement("div");
-    div.className = "mb-2";
-    div.innerHTML = '<input type="file" name="files" class="form-control">';
-    document.getElementById("fileInputs").appendChild(div);
+let linkCount = 1;
+function addLink() {
+  linkCount++;
+  const div = document.createElement('div');
+  div.innerHTML = `<input type="url" name="link${linkCount}" class="form-control mb-2" placeholder="https://...">`;
+  document.getElementById('link-section').appendChild(div);
 }
-function removeFileInput() {
-    const container = document.getElementById("fileInputs");
-    if (container.children.length > 1) {
-        container.removeChild(container.lastElementChild);
-    }
-}
-function addLinkInput() {
-    const div = document.createElement("div");
-    div.innerHTML = '<input type="text" name="links" class="form-control mb-2" placeholder="https://...">';
-    document.getElementById("linkInputs").appendChild(div);
-}
-function removeLinkInput() {
-    const container = document.getElementById("linkInputs");
-    if (container.children.length > 1) {
-        container.removeChild(container.lastElementChild);
-    }
+function removeLink() {
+  const section = document.getElementById('link-section');
+  if (section.children.length > 1) {
+    section.removeChild(section.lastElementChild);
+    linkCount--;
+  }
 }
 </script>
 {% endblock %}

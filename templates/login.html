@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-5">
-  <h3 class="mb-4 text-center">🔐 로그인</h3>
+<div class="container mt-5" style="max-width: 450px;">
+  <h3 class="text-center mb-4">🔐 로그인</h3>
+
   <div class="alert alert-info text-center" role="alert">
     📧 학교에 등록된 이메일(@yc.ac.kr 또는 기타 이메일)로 로그인하세요.
   </div>
+
   <form method="POST" action="{{ url_for('login') }}">
     <div class="mb-3">
       <label for="email" class="form-label">이메일 주소</label>
@@ -12,7 +14,6 @@
     </div>
     <button type="submit" class="btn btn-primary w-100">로그인</button>
   </form>
-  <p class="mt-4 text-center text-muted">© 연암공대 화트25 | Key 교수님 학습지원시스템</p>
 </div>
 {% endblock %}
 

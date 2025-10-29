@@ -1,60 +1,52 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-4">
-    <h3>학습 사이트</h3>
+<h3 class="mb-4">📘 학습 사이트</h3>
 
-    {% for idx, row in lectures %}
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5>{{ row["title"] }}</h5>
-            <p>{{ row["content"] }}</p>
-            {% for f in row["files"].split(";") if f %}
-                <a href="{{ url_for('download_file', filename=f) }}">{{ f }}</a><br>
-            {% endfor %}
-            {% for link in row["links"].split(";") if link %}
-                <a href="{{ link }}" target="_blank">{{ link }}</a><br>
-            {% endfor %}
-            <small class="text-muted">업로드: {{ row["time"] }}</small>
-            <form method="post" action="{{ url_for('lecture') }}" class="mt-2">
-                <a href="{{ url_for('upload_lecture') }}" class="btn btn-danger btn-sm">삭제</a>
-            </form>
-        </div>
-    </div>
-    {% endfor %}
+<!-- 질문 등록 -->
+<form method="POST" class="mb-4">
+  <input type="text" name="title" class="form-control mb-2" placeholder="질문 제목" required>
+  <textarea name="content" class="form-control mb-2" placeholder="질문 내용" required></textarea>
+  <button type="submit" class="btn btn-success">질문 등록</button>
+</form>
+
+<hr>
+
+<!-- 질문 목록 -->
+{% for q in questions %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h5>{{ q.title }}</h5>
+    <p>{{ q.content }}</p>
+    <small>작성자: {{ q.email }} | {{ q.date }}</small>
+
+    {% if is_prof %}
+    <a href="{{ url_for('delete_question', question_id=q.id) }}" class="btn btn-danger btn-sm float-end ms-2">질문삭제</a>
+    {% endif %}
 
     <hr>
-    <h4>💬 Q&A 게시판</h4>
-    <form method="post" action="{{ url_for('add_question') }}">
-        <input type="text" name="title" class="form-control mb-2" placeholder="질문 제목" required>
-        <textarea name="content" class="form-control mb-2" rows="3" placeholder="질문 내용 입력" required></textarea>
-        <button type="submit" class="btn btn-success">질문 등록</button>
+    <h6>💬 댓글</h6>
+
+    {% for c in comments %}
+      {% if c.question_id == q.id %}
+        <div class="ms-3 mb-2">
+          <p>{{ c.comment }}</p>
+          <small>작성자: {{ c.email }} | {{ c.date }}</small>
+          {% if is_prof %}
+          <a href="{{ url_for('delete_comment', comment_index=loop.index0) }}" class="btn btn-outline-danger btn-sm ms-2">댓글삭제</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <form method="POST" action="{{ url_for('add_comment', question_id=q.id) }}" class="mt-2">
+      <input type="text" name="comment" class="form-control mb-2" placeholder="댓글 입력" required>
+      <button type="submit" class="btn btn-outline-primary btn-sm">댓글 등록</button>
     </form>
-
-    <hr>
-    {% for idx, q in questions %}
-    <div class="mb-3 p-3 border rounded">
-        <h6>{{ q["title"] }}</h6>
-        <p>{{ q["content"] }}</p>
-        <small class="text-muted">{{ q["email"] }} | {{ q["date"] }}</small><br>
-        <a href="{{ url_for('edit_question', id=int(q['id'])) }}" class="btn btn-secondary btn-sm mt-1">수정</a>
-        <a href="{{ url_for('delete_question', id=int(q['id'])) }}" class="btn btn-danger btn-sm mt-1">삭제</a>
-
-        <div class="mt-2">
-            <form method="post" action="{{ url_for('add_comment', question_id=int(q['id'])) }}">
-                <input type="text" name="comment" class="form-control mb-1" placeholder="댓글 입력..." required>
-                <button type="submit" class="btn btn-outline-primary btn-sm">댓글 등록</button>
-            </form>
-        </div>
-
-        {% for _, c in comments.iterrows() %}
-            {% if int(c["question_id"]) == int(q["id"]) %}
-                <div class="ms-3 text-muted small">{{ c["email"] }}: {{ c["comment"] }} ({{ c["date"] }})</div>
-            {% endif %}
-        {% endfor %}
-    </div>
-    {% endfor %}
+  </div>
 </div>
+{% endfor %}
 {% endblock %}
+
 
 
 
