@@ -7,28 +7,34 @@
 <div class="card p-4 mb-5 shadow-sm">
   <h5 class="fw-bold mb-3">질문 등록</h5>
   <form method="POST" action="{{ url_for('add_question') }}">
-    <input type="text" name="title" class="form-control mb-2" placeholder="제목을 입력하세요" required>
+    <input type="hidden" name="email" value="{{ email }}">
+    <input type="text" name="question" class="form-control mb-2" placeholder="제목 또는 주제를 입력하세요" required>
     <textarea name="content" class="form-control mb-2" rows="3" placeholder="질문 내용을 입력하세요" required></textarea>
-    <input type="password" name="password" class="form-control mb-2" placeholder="질문 비밀번호" required>
+    <input type="password" name="password" class="form-control mb-2" placeholder="질문 비밀번호 (수정·삭제 시 필요)" required>
     <button type="submit" class="btn btn-primary w-100">등록하기</button>
   </form>
 </div>
 
 <!-- 질문 목록 -->
-{% if questions %}
-  {% for q in questions %}
+{% if qas %}
+  {% for q in qas %}
   <div class="card mb-4 shadow-sm">
     <div class="card-body">
-      <h5 class="card-title fw-bold">{{ q.title }}</h5>
+      <h5 class="card-title fw-bold">{{ q.question }}</h5>
       <p class="card-text">{{ q.content }}</p>
-      <p class="text-muted small mb-2">작성일: {{ q.date }}</p>
+      <p class="text-muted small mb-2">작성자: {{ q.email }} ｜ 작성일: {{ q.created_at }}</p>
 
-      <!-- 수정/삭제 -->
-      <form method="POST" action="{{ url_for('edit_question', qid=q.id) }}" class="d-inline">
+      <!-- 수정 폼 -->
+      <form method="POST" action="{{ url_for('edit_question') }}" class="d-inline">
+        <input type="hidden" name="qid" value="{{ q.id }}">
         <input type="password" name="password" placeholder="비밀번호" class="form-control form-control-sm d-inline w-auto" required>
+        <input type="text" name="new_text" placeholder="수정할 내용" class="form-control form-control-sm d-inline w-auto" required>
         <button type="submit" class="btn btn-sm btn-outline-secondary">수정</button>
       </form>
-      <form method="POST" action="{{ url_for('delete_question', qid=q.id) }}" class="d-inline">
+
+      <!-- 삭제 폼 -->
+      <form method="POST" action="{{ url_for('delete_question') }}" class="d-inline">
+        <input type="hidden" name="qid" value="{{ q.id }}">
         <input type="password" name="password" placeholder="비밀번호" class="form-control form-control-sm d-inline w-auto" required>
         <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
       </form>
@@ -37,18 +43,24 @@
     <!-- 댓글 섹션 -->
     <div class="card-footer bg-light">
       <h6 class="fw-bold mb-2">💭 댓글</h6>
+
       {% for c in comments if c.qid == q.id %}
         <div class="border rounded p-2 mb-2 bg-white">
-          <p class="mb-1">{{ c.content }}</p>
-          <small class="text-muted">{{ c.date }}</small>
-          <form method="POST" action="{{ url_for('delete_comment', cid=c.id) }}" class="mt-1">
+          <p class="mb-1">{{ c.comment }}</p>
+          <small class="text-muted">{{ c.email }} ｜ {{ c.created_at }}</small>
+          <form method="POST" action="{{ url_for('delete_comment') }}" class="mt-1">
+            <input type="hidden" name="cid" value="{{ c.cid }}">
             <input type="password" name="password" placeholder="비밀번호" class="form-control form-control-sm d-inline w-auto" required>
             <button type="submit" class="btn btn-sm btn-outline-danger">댓글 삭제</button>
           </form>
         </div>
       {% endfor %}
-      <form method="POST" action="{{ url_for('add_comment', qid=q.id) }}" class="mt-3">
-        <textarea name="content" class="form-control mb-2" rows="2" placeholder="댓글을 입력하세요" required></textarea>
+
+      <!-- 댓글 등록 -->
+      <form method="POST" action="{{ url_for('add_comment') }}" class="mt-3">
+        <input type="hidden" name="qid" value="{{ q.id }}">
+        <input type="hidden" name="email" value="{{ email }}">
+        <textarea name="comment" class="form-control mb-2" rows="2" placeholder="댓글을 입력하세요" required></textarea>
         <input type="password" name="password" class="form-control mb-2" placeholder="댓글 비밀번호" required>
         <button type="submit" class="btn btn-outline-primary btn-sm w-100">댓글 등록</button>
       </form>
