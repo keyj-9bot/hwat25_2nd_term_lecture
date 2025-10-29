@@ -1,13 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-4">
-  <h3>👨‍🏫 교수 로그인</h3>
-  <form method="POST" action="{{ url_for('login') }}">
+<div class="container mt-5">
+  <h3 class="mb-4">👨‍🏫 교수 로그인</h3>
+  <form method="POST" action="{{ url_for('login_prof') }}">
     <div class="mb-3">
-      <label for="email" class="form-label">이메일</label>
-      <input type="email" class="form-control" name="email" required placeholder="example@yc.ac.kr">
+      <label for="email" class="form-label">학교 이메일</label>
+      <input type="email" class="form-control" id="email" name="email" placeholder="example@yc.ac.kr" required>
     </div>
-    <button type="submit" class="btn btn-primary">로그인</button>
+    <button type="submit" class="btn btn-primary w-100">로그인</button>
   </form>
+  <p class="mt-3 text-center text-muted">© 연암공대 화트25 | Key 교수님 학습지원시스템</p>
 </div>
 {% endblock %}
+
