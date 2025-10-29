@@ -1,27 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-
-<div class="container text-center mt-5" style="max-width: 420px;">
-  <h2 class="fw-bold mb-4">🏫 강의자료 및 Q&A 등록</h2>
-  <p class="text-muted mb-4">이메일 주소로 로그인해 주세요.<br>(학교에 등록한 이메일로 접근 가능합니다)</p>
-
-  <form method="POST" action="{{ url_for('home') }}">
-    <div class="mb-3 text-start">
-      <label for="email" class="form-label fw-semibold">이메일 로그인</label>
-      <input type="email" class="form-control" id="email" name="email" placeholder="(***@***.***)" required>
-    </div>
-    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">로그인</button>
+<div class="container text-center mt-5" style="max-width:420px;">
+  <h2 class="fw-bold mb-4">🏫 화트25 로그인</h2>
+  <form method="POST">
+    <input type="email" name="email" class="form-control mb-3" placeholder="학교 이메일 입력" required>
+    <button type="submit" class="btn btn-primary w-100">로그인</button>
   </form>
 
-  {% if error %}
-  <div class="alert alert-danger mt-3" role="alert">
-    {{ error }}
-  </div>
-  {% endif %}
-
-  <hr class="my-5">
-  <a href="{{ url_for('login_prof') }}" class="btn btn-success w-100 py-2 fw-bold">👨‍🏫 자료 업로드 사이트</a>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-danger mt-3">{{ messages[0] }}</div>
+    {% endif %}
+  {% endwith %}
 </div>
-
 {% endblock %}
+
 

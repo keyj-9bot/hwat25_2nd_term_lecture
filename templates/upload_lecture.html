@@ -1,70 +1,46 @@
-
 {% extends "base.html" %}
 {% block content %}
-<h3>📘 강의자료 업로드</h3>
-<p>교수님은 강의자료를 업로드·수정·삭제할 수 있습니다.</p>
+<h3 class="fw-bold mb-3">📘 강의자료 업로드</h3>
 
-<form method="POST" action="{{ url_for('upload_lecture') }}" enctype="multipart/form-data">
-  <label>① 내용(Topic)</label>
-  <input type="text" name="topic" class="form-control mb-2" required>
-
-  <label>② 자료파일 선택</label>
-  <input type="file" name="file" class="form-control mb-2" multiple>
-
-  <label>③ 연관 사이트 (Google Drive, 뉴스 등)</label>
+<form method="POST" enctype="multipart/form-data">
+  <input type="text" name="title" class="form-control mb-2" placeholder="자료 제목" required>
+  <textarea name="content" class="form-control mb-2" rows="2" placeholder="내용 입력" required></textarea>
+  <input type="file" name="file" class="form-control mb-2">
   <div id="siteInputs">
-    <input type="text" name="ref_site" placeholder="https://..." class="form-control mb-1">
+    <input type="text" name="site_link" class="form-control mb-1" placeholder="https://...">
   </div>
   <button type="button" class="btn btn-outline-primary btn-sm" onclick="addSiteInput()">＋ 추가</button>
   <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSiteInput()">－ 삭제</button>
-  <br><br>
-
-  <label>④ 비고(Notes)</label>
-  <input type="text" name="notes" class="form-control mb-3">
-
-  <button type="submit" class="btn btn-success">📤 새 자료 업로드</button>
+  <button type="submit" class="btn btn-success w-100 mt-3">📤 업로드</button>
 </form>
 
 <hr>
-<h4>📚 업로드된 강의자료</h4>
-<table class="table table-striped table-bordered">
-  <thead class="table-dark">
-    <tr>
-      <th>번호</th><th>내용</th><th>자료파일</th><th>연관사이트</th><th>비고</th>
-      {% if session.get('role') == 'professor' %}<th>업로드시각</th>{% endif %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for row in data %}
-    <tr>
-      <td>{{ row["번호"] }}</td>
-      <td>{{ row["내용"] }}</td>
-      <td>
-        {% for f in row["자료파일"].split(";") %}
-          {% if f %}
-          <a href="/download/{{ f.strip() }}">{{ f.strip() }}</a><br>
-          {% endif %}
-        {% endfor %}
-      </td>
-      <td>{{ row["연관사이트"] }}</td>
-      <td>{{ row["비고"] }}</td>
-      {% if session.get('role') == 'professor' %}
-      <td>{{ row["업로드시각"] }}</td>
-      {% endif %}
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<h4>📚 업로드된 자료</h4>
+{% for lec in lectures %}
+<div class="border rounded p-3 mb-3">
+  <h5>{{ lec.title }}</h5>
+  <p>{{ lec.content }}</p>
+  {% if lec.file_name %}
+  <a href="{{ url_for('download', filename=lec.file_name) }}">📥 파일 다운로드</a><br>
+  {% endif %}
+  {% if lec.site_links %}<small>🔗 {{ lec.site_links }}</small>{% endif %}
+  <form method="POST" action="{{ url_for('delete_lecture', title=lec.title) }}">
+    <button type="submit" class="btn btn-sm btn-danger mt-2">🗑️ 삭제</button>
+  </form>
+</div>
+{% endfor %}
 
 <script>
-function addSiteInput() {
-  const div = document.createElement('div');
-  div.innerHTML = `<input type="text" name="ref_site" placeholder="https://..." class="form-control mb-1">`;
+function addSiteInput(){
+  const div=document.createElement('div');
+  div.innerHTML='<input type="text" name="site_link" class="form-control mb-1" placeholder="https://...">';
   document.getElementById('siteInputs').appendChild(div);
 }
-function removeSiteInput() {
-  const div = document.getElementById('siteInputs');
-  if (div.children.length > 1) div.removeChild(div.lastChild);
+function removeSiteInput(){
+  const div=document.getElementById('siteInputs');
+  if(div.children.length>1) div.removeChild(div.lastChild);
 }
 </script>
 {% endblock %}
+
+
