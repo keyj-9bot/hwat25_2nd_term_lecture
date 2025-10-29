@@ -1,7 +1,6 @@
-
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화공트랙 강의자료 업로드 시스템 (질문 수정·삭제 + 교수 관리자 권한 + 비밀번호 검증 완전판)
+📘 연암공대 화공트랙 강의자료 업로드 시스템 (교수 자동 인식 + 관리자 삭제 + 비번 4자리 제한 완전판)
 작성자: Key 교수님
 """
 
@@ -19,9 +18,10 @@ app.secret_key = "key_flask_secret"
 DATA_LECTURE = "lecture_data.csv"
 DATA_QUESTIONS = "questions.csv"
 DATA_COMMENTS = "comments.csv"
+ALLOWED_EMAILS_FILE = "allowed_emails.txt"
 
 # ─────────────────────────────
-# 📂 CSV 로드 / 저장 함수
+# 📂 CSV 로드 / 저장
 # ─────────────────────────────
 def load_csv(path, cols):
     if os.path.exists(path):
@@ -37,11 +37,50 @@ def save_csv(path, df):
 
 
 # ─────────────────────────────
+# 📧 허용 이메일 로드
+# ─────────────────────────────
+def get_allowed_emails():
+    """허용된 이메일 목록 로드"""
+    try:
+        with open(ALLOWED_EMAILS_FILE, "r", encoding="utf-8") as f:
+            emails = [line.strip() for line in f.readlines() if line.strip()]
+        return emails
+    except Exception as e:
+        print(f"⚠️ allowed_emails.txt 읽기 오류: {e}")
+        return []
+
+
+# ─────────────────────────────
 # 🏠 홈
 # ─────────────────────────────
 @app.route("/")
 def home():
     return redirect(url_for("lecture"))
+
+
+# ─────────────────────────────
+# 🔐 이메일 로그인 (교수 자동 인식)
+# ─────────────────────────────
+@app.route("/login", methods=["POST"])
+def login():
+    email = request.form.get("email", "").strip()
+    allowed_emails = get_allowed_emails()
+
+    if email not in allowed_emails:
+        flash("❌ 등록되지 않은 이메일입니다.")
+        return redirect(url_for("home"))
+
+    # ✅ 첫 번째 이메일 = 교수 계정
+    if email == allowed_emails[0]:
+        session["prof"] = True
+        session["email"] = email
+        flash("👨‍🏫 교수 계정으로 로그인되었습니다.")
+        return redirect(url_for("upload_lecture"))
+    else:
+        session["prof"] = False
+        session["email"] = email
+        flash("✅ 학생 계정으로 로그인되었습니다.")
+        return redirect(url_for("lecture"))
 
 
 # ─────────────────────────────
@@ -62,17 +101,17 @@ def lecture():
 
 
 # ─────────────────────────────
-# 💬 질문 등록 (비번 4자리 검사 + flash 메시지)
+# 💬 질문 등록 (비밀번호 4자리 제한)
 # ─────────────────────────────
 @app.route("/add_question", methods=["POST"])
 def add_question():
     title = request.form.get("title")
     content = request.form.get("content")
-    password = request.form.get("password").strip()
+    password = request.form.get("password", "").strip()
 
-    # 비밀번호 유효성 검사
+    # ✅ 비밀번호는 정확히 숫자 4자리만 허용
     if not password.isdigit() or len(password) != 4:
-        flash("❌ 비밀번호는 정확히 4자리 숫자여야 합니다.")
+        flash("❌ 비번을 4자리로 입력하세요.")
         return redirect(url_for("lecture"))
 
     df = load_csv(DATA_QUESTIONS, ["id", "email", "title", "content", "password", "created_at"])
@@ -92,43 +131,15 @@ def add_question():
 
 
 # ─────────────────────────────
-# ✏️ 질문 수정 (GET/POST)
-# ─────────────────────────────
-@app.route("/edit_question/<int:qid>", methods=["POST", "GET"])
-def edit_question(qid):
-    df = load_csv(DATA_QUESTIONS, ["id", "email", "title", "content", "password", "created_at"])
-    q = df[df["id"] == qid].iloc[0]
-
-    if request.method == "GET":
-        # 수정 페이지 렌더링
-        return render_template("edit_question.html", question=q)
-
-    # POST 요청 — 수정 처리
-    password = request.form.get("password")
-    if password != str(q["password"]):
-        flash("⚠️ 등록 시 저장한 비번을 입력하세요.")
-        return redirect(url_for("lecture"))
-
-    new_title = request.form.get("title")
-    new_content = request.form.get("content")
-    df.loc[df["id"] == qid, ["title", "content"]] = [new_title, new_content]
-    save_csv(DATA_QUESTIONS, df)
-
-    flash("✏️ 질문이 수정되었습니다.")
-    return redirect(url_for("lecture"))
-
-
-# ─────────────────────────────
-# 🗑️ 질문 삭제 (교수는 자유 삭제 가능)
+# 🗑️ 질문 삭제 (교수는 비밀번호 생략)
 # ─────────────────────────────
 @app.route("/delete_question/<int:qid>", methods=["POST"])
 def delete_question(qid):
     df = load_csv(DATA_QUESTIONS, ["id", "email", "title", "content", "password", "created_at"])
     q = df[df["id"] == qid].iloc[0]
 
-    # 교수는 비밀번호 검사 생략
-    if "prof" not in session:
-        password = request.form.get("password")
+    if not session.get("prof"):  # 학생일 경우
+        password = request.form.get("password", "")
         if password != str(q["password"]):
             flash("⚠️ 등록 시 저장한 비번을 입력하세요.")
             return redirect(url_for("lecture"))
@@ -140,14 +151,18 @@ def delete_question(qid):
 
 
 # ─────────────────────────────
-# 💭 댓글 추가 / 삭제 (교수는 자유 삭제 가능)
+# 💭 댓글 추가 / 삭제 (교수는 비밀번호 생략)
 # ─────────────────────────────
 @app.route("/add_comment/<int:qid>", methods=["POST"])
 def add_comment(qid):
     df = load_csv(DATA_COMMENTS, ["cid", "qid", "email", "comment", "password", "created_at"])
     new_cid = len(df) + 1
     comment = request.form.get("content")
-    password = request.form.get("password")
+    password = request.form.get("password", "").strip()
+
+    if not password.isdigit() or len(password) != 4:
+        flash("❌ 댓글 비번은 4자리 숫자여야 합니다.")
+        return redirect(url_for("lecture"))
 
     new_row = {
         "cid": new_cid,
@@ -168,9 +183,8 @@ def delete_comment(cid):
     df = load_csv(DATA_COMMENTS, ["cid", "qid", "email", "comment", "password", "created_at"])
     c = df[df["cid"] == cid].iloc[0]
 
-    # 교수는 비밀번호 검사 생략
-    if "prof" not in session:
-        password = request.form.get("password")
+    if not session.get("prof"):
+        password = request.form.get("password", "")
         if password != str(c["password"]):
             flash("⚠️ 등록 시 저장한 비번을 입력하세요.")
             return redirect(url_for("lecture"))
@@ -182,38 +196,16 @@ def delete_comment(cid):
 
 
 # ─────────────────────────────
-# 👨‍🏫 교수 로그인 / 로그아웃 / 업로드
+# 👨‍🏫 교수 전용 강의자료 업로드
 # ─────────────────────────────
-@app.route("/login_prof", methods=["GET", "POST"])
-def login_prof():
-    if request.method == "POST":
-        username = request.form.get("username").strip()
-        password = request.form.get("password").strip()
-
-        if username == "professor" and password == "key1234":
-            session["prof"] = username
-            flash("👨‍🏫 교수님 로그인 성공.")
-            return redirect(url_for("upload_lecture"))
-        else:
-            error = "아이디 또는 비밀번호가 올바르지 않습니다."
-            return render_template("login_prof.html", error=error)
-
-    return render_template("login_prof.html")
-
-
-@app.route("/logout_prof")
-def logout_prof():
-    session.pop("prof", None)
-    flash("로그아웃 되었습니다.")
-    return redirect(url_for("login_prof"))
-
-
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    if "prof" not in session:
-        return redirect(url_for("login_prof"))
+    if not session.get("prof"):
+        flash("🔒 교수 전용 페이지입니다.")
+        return redirect(url_for("lecture"))
 
     df = load_csv(DATA_LECTURE, ["title", "content", "file_link", "site_link", "uploaded_at"])
+
     if request.method == "POST":
         title = request.form.get("title")
         content = request.form.get("content")
@@ -237,8 +229,8 @@ def upload_lecture():
 
 @app.route("/delete_lecture", methods=["POST"])
 def delete_lecture():
-    if "prof" not in session:
-        return redirect(url_for("login_prof"))
+    if not session.get("prof"):
+        return redirect(url_for("lecture"))
     title = request.form.get("title")
     df = load_csv(DATA_LECTURE, ["title", "content", "file_link", "site_link", "uploaded_at"])
     df = df[df["title"] != title]
