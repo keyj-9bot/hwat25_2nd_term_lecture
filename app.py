@@ -12,6 +12,8 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
 
 # ─────────────── 설정 ───────────────
 DATA_LECTURE = "lecture_data.csv"
@@ -178,6 +180,20 @@ def add_comment(question_id):
     save_csv(DATA_COMMENTS, df)
     flash("댓글이 등록되었습니다.")
     return redirect(url_for("lecture"))
+
+# ─────────────────────────────
+# 🔒 캐시 무효화 (HTML 자동 새로고침)
+# ─────────────────────────────
+@app.after_request
+def add_header(response):
+    """
+    모든 HTML 응답에 캐시 무효화 헤더를 추가.
+    브라우저와 Render가 항상 최신 템플릿을 로드하도록 함.
+    """
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 if __name__ == "__main__":
