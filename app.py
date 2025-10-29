@@ -20,17 +20,22 @@ ALLOWED_FILE = "allowed_emails.txt"
 # 📂 데이터 로드/저장
 # ─────────────────────────────
 
+
 def load_csv(path, cols):
-    """CSV 로드 — 파일 없거나 비어있으면 자동 초기화"""
-    if not os.path.exists(path) or os.stat(path).st_size == 0:
-        return pd.DataFrame(columns=cols)
+    """CSV 로드 — 파일 없거나 비어있으면 자동 생성"""
     try:
-        df = pd.read_csv(path)
-        if df.empty:
+        if not os.path.exists(path) or os.stat(path).st_size == 0:
             return pd.DataFrame(columns=cols)
+        df = pd.read_csv(path)
+        # 컬럼 누락 시 보정
+        for c in cols:
+            if c not in df.columns:
+                df[c] = ""
         return df
-    except Exception:
+    except Exception as e:
+        print(f"⚠️ CSV 로드 오류 ({path}): {e}")
         return pd.DataFrame(columns=cols)
+
 
 # ─────────────────────────────
 # 🏠 홈 (공통 로그인)
