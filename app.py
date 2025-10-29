@@ -139,8 +139,8 @@ def upload_lecture():
 def lecture():
     q_df = load_csv(DATA_QUESTIONS, ["id", "email", "title", "content", "date"])
     c_df = load_csv(DATA_COMMENTS, ["question_id", "email", "comment", "date"])
+    l_df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])  # ✅ 추가
 
-    # 질문 등록
     if request.method == "POST":
         new_id = len(q_df) + 1
         title = request.form["title"]
@@ -153,9 +153,15 @@ def lecture():
         flash("질문이 등록되었습니다.")
         return redirect(url_for("lecture"))
 
-    questions = q_df.to_dict("records")
-    comments = c_df.to_dict("records")
-    return render_template("lecture.html", questions=questions, comments=comments, is_prof=is_professor())
+    return render_template(
+        "lecture.html",
+        questions=q_df.to_dict("records"),
+        comments=c_df.to_dict("records"),
+        lectures=l_df.to_dict("records"),  # ✅ 추가
+        is_prof=(session.get("email") in open(ALLOWED_EMAILS, encoding="utf-8").read())
+    )
+
+
 
 # ─────────────── 댓글 등록 ───────────────
 @app.route("/add_comment/<int:question_id>", methods=["POST"])

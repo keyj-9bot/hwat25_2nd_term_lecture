@@ -1,111 +1,92 @@
 {% extends "base.html" %}
 {% block content %}
-<h3 class="mb-4">📂 강의자료 업로드</h3>
+<h3 class="fw-bold mb-3">📘 강의자료 업로드</h3>
 
-<form method="POST" enctype="multipart/form-data" id="uploadForm">
-  <div class="mb-3">
-    <label class="form-label">자료 제목</label>
-    <input type="text" name="title" class="form-control" required>
+<!-- 🔹 업로드 폼 -->
+<form method="POST" enctype="multipart/form-data">
+  <input type="text" name="title" class="form-control mb-2" placeholder="자료 제목" required>
+  <textarea name="content" class="form-control mb-2" rows="2" placeholder="내용 입력" required></textarea>
+
+  <!-- ✅ 파일 입력칸 -->
+  <div id="fileInputs">
+    <input type="file" name="files" class="form-control mb-1">
+  </div>
+  <div class="d-flex mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
   </div>
 
-  <div class="mb-3">
-    <label class="form-label">내용</label>
-    <textarea name="content" class="form-control" required></textarea>
+  <!-- ✅ 링크 입력칸 -->
+  <div id="linkInputs">
+    <input type="text" name="link1" class="form-control mb-1" placeholder="https:// 관련 사이트 링크">
+  </div>
+  <div class="d-flex mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addLinkInput()">＋ 링크 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLinkInput()">－ 링크 삭제</button>
   </div>
 
-  <div class="mb-3">
-    <label class="form-label">파일 선택</label>
-    <input type="file" id="fileInput" name="files" multiple class="form-control">
-    <ul id="fileList" class="list-group mt-2"></ul>
-  </div>
-
-  <div id="link-section" class="mb-3">
-    <label class="form-label">관련 링크</label>
-    <input type="url" name="link1" class="form-control mb-2" placeholder="https://...">
-  </div>
-
-  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addLink()">+ 링크 추가</button>
-  <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLink()">- 링크 삭제</button>
-
-  <button type="submit" class="btn btn-success w-100 mt-3">업로드</button>
+  <button type="submit" class="btn btn-success w-100 mt-2">📤 업로드</button>
 </form>
 
 <hr>
 
-<h4 class="mt-4">📚 업로드된 강의자료</h4>
-{% for lecture in lectures %}
-<div class="card mb-3">
-  <div class="card-body">
-    <h5>{{ lecture.title }}</h5>
-    <p>{{ lecture.content }}</p>
+<!-- ✅ 업로드된 자료 표시 -->
+<h4 class="fw-bold mt-4">📚 업로드된 자료</h4>
+{% if lectures %}
+  {% for lec in lectures %}
+  <div class="border rounded p-3 mb-3 bg-light shadow-sm">
+    <h5 class="fw-bold">{{ lec.title }}</h5>
+    <p>{{ lec.content }}</p>
 
-    {% if lecture.files %}
-      {% for f in lecture.files.split(";") %}
-        <a href="{{ url_for('uploaded_file', filename=f) }}" target="_blank" class="d-block text-decoration-none">📎 {{ f }}</a>
-      {% endfor %}
+    {% if lec.files %}
+      <p class="mb-1">📎 파일:
+        {% for f in lec.files.split(';') %}
+          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
     {% endif %}
-    {% if lecture.links %}
-      {% for l in lecture.links.split(";") %}
-        <a href="{{ l }}" target="_blank" class="d-block">🔗 {{ l }}</a>
-      {% endfor %}
+
+    {% if lec.links %}
+      <p class="mb-1">🔗 관련 링크:
+        {% for l in lec.links.split(';') %}
+          <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
     {% endif %}
-    <p class="text-muted small mt-2">업로드: {{ lecture.date }}</p>
+
+    <small class="text-muted">업로드: {{ lec.date }}</small>
   </div>
-</div>
-{% endfor %}
+  {% endfor %}
+{% else %}
+  <p class="text-muted">아직 등록된 자료가 없습니다.</p>
+{% endif %}
 
 <script>
-let linkCount = 1;
-function addLink() {
-  linkCount++;
+function addFileInput() {
   const div = document.createElement('div');
-  div.innerHTML = `<input type="url" name="link${linkCount}" class="form-control mb-2" placeholder="https://...">`;
-  document.getElementById('link-section').appendChild(div);
-}
-function removeLink() {
-  const section = document.getElementById('link-section');
-  if (section.children.length > 1) {
-    section.removeChild(section.lastElementChild);
-    linkCount--;
-  }
+  div.innerHTML = '<input type="file" name="files" class="form-control mb-1">';
+  document.getElementById('fileInputs').appendChild(div);
 }
 
-// 📁 파일 선택 시 목록 표시 및 삭제 기능
-const fileInput = document.getElementById('fileInput');
-const fileList = document.getElementById('fileList');
-let selectedFiles = [];
-
-fileInput.addEventListener('change', (e) => {
-  selectedFiles = Array.from(e.target.files);
-  renderFileList();
-});
-
-function renderFileList() {
-  fileList.innerHTML = '';
-  selectedFiles.forEach((file, index) => {
-    const li = document.createElement('li');
-    li.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
-    li.textContent = file.name;
-
-    const delBtn = document.createElement('button');
-    delBtn.textContent = '삭제';
-    delBtn.className = 'btn btn-sm btn-outline-danger';
-    delBtn.onclick = () => removeFile(index);
-
-    li.appendChild(delBtn);
-    fileList.appendChild(li);
-  });
+function removeFileInput() {
+  const div = document.getElementById('fileInputs');
+  if (div.children.length > 1) div.removeChild(div.lastChild);
 }
 
-function removeFile(index) {
-  selectedFiles.splice(index, 1);
-  const dataTransfer = new DataTransfer();
-  selectedFiles.forEach(file => dataTransfer.items.add(file));
-  fileInput.files = dataTransfer.files;
-  renderFileList();
+function addLinkInput() {
+  const div = document.createElement('div');
+  const count = div.children ? div.children.length + 1 : 1;
+  div.innerHTML = `<input type="text" name="link${count}" class="form-control mb-1" placeholder="https:// 추가 링크">`;
+  document.getElementById('linkInputs').appendChild(div);
+}
+
+function removeLinkInput() {
+  const div = document.getElementById('linkInputs');
+  if (div.children.length > 1) div.removeChild(div.lastChild);
 }
 </script>
 {% endblock %}
+
 
 
 
