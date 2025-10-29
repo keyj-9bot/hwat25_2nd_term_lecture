@@ -45,8 +45,35 @@
   </div>
 </div>
 {% endfor %}
-{% endblock %}
 
+<hr class="my-5">
+
+<!-- 📚 강의자료 게시판 -->
+<h4>📚 강의자료 게시판</h4>
+{% if lectures %}
+  {% for lec in lectures %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5>{{ lec.title }}</h5>
+      <p>{{ lec.content }}</p>
+      {% if lec.files %}
+        {% for f in lec.files.split(";") %}
+          <a href="{{ url_for('uploaded_file', filename=f) }}" target="_blank" class="d-block text-decoration-none">📎 {{ f }}</a>
+        {% endfor %}
+      {% endif %}
+      {% if lec.links %}
+        {% for l in lec.links.split(";") %}
+          <a href="{{ l }}" target="_blank" class="d-block">🔗 {{ l }}</a>
+        {% endfor %}
+      {% endif %}
+      <p class="text-muted small mt-2">업로드: {{ lec.date }}</p>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted">등록된 강의자료가 없습니다.</p>
+{% endif %}
+{% endblock %}
 
 
 

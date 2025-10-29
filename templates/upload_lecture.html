@@ -2,7 +2,7 @@
 {% block content %}
 <h3 class="mb-4">📂 강의자료 업로드</h3>
 
-<form method="POST" enctype="multipart/form-data">
+<form method="POST" enctype="multipart/form-data" id="uploadForm">
   <div class="mb-3">
     <label class="form-label">자료 제목</label>
     <input type="text" name="title" class="form-control" required>
@@ -15,7 +15,8 @@
 
   <div class="mb-3">
     <label class="form-label">파일 선택</label>
-    <input type="file" name="files" multiple class="form-control">
+    <input type="file" id="fileInput" name="files" multiple class="form-control">
+    <ul id="fileList" class="list-group mt-2"></ul>
   </div>
 
   <div id="link-section" class="mb-3">
@@ -23,8 +24,9 @@
     <input type="url" name="link1" class="form-control mb-2" placeholder="https://...">
   </div>
 
-  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addLink()">+ 추가</button>
-  <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLink()">- 삭제</button>
+  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addLink()">+ 링크 추가</button>
+  <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLink()">- 링크 삭제</button>
+
   <button type="submit" class="btn btn-success w-100 mt-3">업로드</button>
 </form>
 
@@ -36,6 +38,7 @@
   <div class="card-body">
     <h5>{{ lecture.title }}</h5>
     <p>{{ lecture.content }}</p>
+
     {% if lecture.files %}
       {% for f in lecture.files.split(";") %}
         <a href="{{ url_for('uploaded_file', filename=f) }}" target="_blank" class="d-block text-decoration-none">📎 {{ f }}</a>
@@ -66,8 +69,44 @@ function removeLink() {
     linkCount--;
   }
 }
+
+// 📁 파일 선택 시 목록 표시 및 삭제 기능
+const fileInput = document.getElementById('fileInput');
+const fileList = document.getElementById('fileList');
+let selectedFiles = [];
+
+fileInput.addEventListener('change', (e) => {
+  selectedFiles = Array.from(e.target.files);
+  renderFileList();
+});
+
+function renderFileList() {
+  fileList.innerHTML = '';
+  selectedFiles.forEach((file, index) => {
+    const li = document.createElement('li');
+    li.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+    li.textContent = file.name;
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '삭제';
+    delBtn.className = 'btn btn-sm btn-outline-danger';
+    delBtn.onclick = () => removeFile(index);
+
+    li.appendChild(delBtn);
+    fileList.appendChild(li);
+  });
+}
+
+function removeFile(index) {
+  selectedFiles.splice(index, 1);
+  const dataTransfer = new DataTransfer();
+  selectedFiles.forEach(file => dataTransfer.items.add(file));
+  fileInput.files = dataTransfer.files;
+  renderFileList();
+}
 </script>
 {% endblock %}
+
 
 
 
