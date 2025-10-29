@@ -43,7 +43,9 @@
 
     {% if lec.links %}
       <p>🔗 링크:
-        {% for l in lec.links.split(';') %}
+        
+        {% for l in (lec.links or "").split(';') %}
+
           <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>

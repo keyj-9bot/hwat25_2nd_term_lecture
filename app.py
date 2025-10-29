@@ -103,44 +103,46 @@ def logout():
 # ─────────────────────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    if not check_login() or session.get("role") != "professor":
-        flash("⚠️ 교수 전용 페이지입니다.")
-        return redirect(url_for("lecture"))
+    if not check_login():
+        return redirect(url_for("login_prof"))
 
-    df = load_csv(DATA_LECTURE, ["id", "title", "content", "files", "links", "date", "confirmed"])
+    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])
 
     if request.method == "POST":
-        title = request.form["title"]
-        content = request.form["content"]
+        title = request.form.get("title", "")
+        content = request.form.get("content", "")
         date = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        # 파일 업로드
-        uploaded_files = []
+        upload_dir = os.path.join(os.getcwd(), UPLOAD_FOLDER)
+        os.makedirs(upload_dir, exist_ok=True)
+
+        files = []
         for file in request.files.getlist("files"):
             if file and file.filename:
                 filename = secure_filename(file.filename)
-                file.save(os.path.join(UPLOAD_FOLDER, filename))
-                uploaded_files.append(filename)
+                save_path = os.path.join(upload_dir, filename)
+                file.save(save_path)
+                files.append(filename)
 
         links = [v for k, v in request.form.items() if k.startswith("link") and v.strip()]
-        new_id = len(df) + 1
 
         new_row = pd.DataFrame([{
-            "id": new_id,
             "title": title,
             "content": content,
-            "files": ";".join(uploaded_files),
+            "files": ";".join(files),
             "links": ";".join(links),
-            "date": date,
-            "confirmed": False
+            "date": date
         }])
-
         df = pd.concat([df, new_row], ignore_index=True)
         save_csv(DATA_LECTURE, df)
-        flash("📘 강의자료가 업로드되었습니다. (확인 버튼 클릭 시 학습사이트에 게시됩니다.)")
+        flash("📚 강의자료가 업로드되었습니다.")
         return redirect(url_for("upload_lecture"))
 
+    # ✅ NaN 값이 있으면 빈 문자열로 변환 (핵심!)
+    df = df.fillna("")
+
     return render_template("upload_lecture.html", lectures=df.to_dict("records"))
+
 
 
 # ─────────────────────────────
