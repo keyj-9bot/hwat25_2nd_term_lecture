@@ -39,7 +39,7 @@
 
     {% if lec['files'] %}
       <p>📎 파일:
-        {% for f in (lec['files'] or '').split(';') %}
+        {% for f in (lec['files'] or '').split(';') if f.strip() %}
           <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
@@ -47,7 +47,7 @@
 
     {% if lec['links'] %}
       <p>🔗 링크:
-        {% for l in (lec['links'] or '').split(';') %}
+        {% for l in (lec['links'] or '').split(';') if l.strip() %}
           <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
@@ -74,7 +74,7 @@
   <p class="text-muted">등록된 자료가 없습니다.</p>
 {% endif %}
 
-<!-- 🧩 자바스크립트 -->
+<!-- 🧩 JS: 파일·링크 추가/삭제 -->
 <script>
 function addFileInput() {
   const div = document.createElement('div');
@@ -99,7 +99,6 @@ function removeLinkInput() {
 }
 </script>
 {% endblock %}
-
 
 
 
