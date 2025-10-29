@@ -161,6 +161,41 @@ def lecture():
         comments=comments.to_dict(orient="records")
     )
 
+
+
+# ─────────────────────────────
+# 💬 Q&A 질문 등록 기능
+# ─────────────────────────────
+@app.route("/add_question", methods=["POST"])
+def add_question():
+    email = request.form.get("email", "")
+    question = request.form.get("question", "")
+    password = request.form.get("password", "")
+
+    if not email or not question or not password:
+        return redirect(url_for("lecture"))
+
+    df = load_csv(QUESTIONS_FILE, ["qid", "email", "question", "password", "created_at"])
+    new = pd.DataFrame([{
+        "qid": len(df) + 1,
+        "email": email,
+        "question": question,
+        "password": password,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+    }])
+    df = pd.concat([df, new], ignore_index=True)
+    save_csv(QUESTIONS_FILE, df)
+    return redirect(url_for("lecture"))
+
+
+
+
+
+
+
+
+
+
 # ─────────────────────────────
 # 👨‍🏫 교수 로그인
 # ─────────────────────────────
