@@ -22,15 +22,24 @@ ALLOWED_FILE = "allowed_emails.txt"
 
 
 def load_csv(path, cols):
-    """CSV 로드 — 파일 없거나 비어있으면 자동 생성"""
+    """📄 CSV 로드 — 파일 없거나 비어있거나 컬럼 불일치 시 자동 복구"""
     try:
+        # 파일이 없거나 비어있으면 자동 생성
         if not os.path.exists(path) or os.stat(path).st_size == 0:
+            print(f"⚠️ CSV 파일이 없어 새로 생성됨: {path}")
             return pd.DataFrame(columns=cols)
+
+        # CSV 읽기
         df = pd.read_csv(path)
-        # 컬럼 누락 시 보정
+
+        # 컬럼 누락 시 자동 보정
         for c in cols:
             if c not in df.columns:
                 df[c] = ""
+
+        # 여분 컬럼이 있을 경우 제거
+        df = df[cols]
+
         return df
     except Exception as e:
         print(f"⚠️ CSV 로드 오류 ({path}): {e}")
