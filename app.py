@@ -1,6 +1,7 @@
+
 # -*- coding: utf-8 -*-
 """
-📘 화트25 강의자료 및 Q&A 시스템 (2025.10.29)
+📘 화트25 강의자료 및 Q&A 시스템 (2025.10.29 완성판)
 작성자: Key 교수님
 """
 from flask import Flask, render_template, request, redirect, url_for, session
@@ -16,7 +17,7 @@ COMMENT_FILE = "comments.csv"
 ALLOWED_FILE = "allowed_emails.txt"
 
 # ─────────────────────────────
-# 데이터 로드/저장
+# 📂 데이터 로드/저장
 # ─────────────────────────────
 def load_csv(path, cols):
     if os.path.exists(path):
@@ -30,7 +31,7 @@ def save_csv(df, path):
     df.to_csv(path, index=False, encoding="utf-8-sig")
 
 # ─────────────────────────────
-# 홈 (공통 로그인)
+# 🏠 홈 (공통 로그인)
 # ─────────────────────────────
 @app.route("/", methods=["GET", "POST"], endpoint="home")
 def home():
@@ -52,7 +53,7 @@ def home():
     return render_template("home.html", error=error)
 
 # ─────────────────────────────
-# 강의자료 + 질문 + 댓글 (삭제 추가)
+# 📚 강의자료 + 질문 + 댓글 (등록/수정/삭제)
 # ─────────────────────────────
 @app.route("/lecture", methods=["GET", "POST"], endpoint="lecture")
 def lecture():
@@ -86,7 +87,7 @@ def lecture():
         new_text = request.form.get("edit_question", "").strip()
         for idx, row in questions.iterrows():
             if row["id"] == qid and str(row["password"]) == pw:
-                questions.at[idx, "question"] = new_text
+                questions.at[idx, "question"] = new_text + " (수정됨)"
                 save_csv(questions, QUESTION_FILE)
                 break
         return redirect(url_for("lecture"))
@@ -125,13 +126,15 @@ def lecture():
         save_csv(comments, COMMENT_FILE)
         return redirect(url_for("lecture"))
 
-    return render_template("lecture.html",
-                           lectures=lectures.to_dict(orient="records"),
-                           questions=questions.to_dict(orient="records"),
-                           comments=comments.to_dict(orient="records"))
+    return render_template(
+        "lecture.html",
+        lectures=lectures.to_dict(orient="records"),
+        questions=questions.to_dict(orient="records"),
+        comments=comments.to_dict(orient="records")
+    )
 
 # ─────────────────────────────
-# 교수 로그인
+# 👨‍🏫 교수 로그인
 # ─────────────────────────────
 @app.route("/login_prof", methods=["GET", "POST"], endpoint="login_prof")
 def login_prof():
@@ -147,7 +150,7 @@ def login_prof():
     return render_template("login_prof.html", error=error)
 
 # ─────────────────────────────
-# 교수 전용 업로드
+# ⬆️ 교수 전용 업로드
 # ─────────────────────────────
 @app.route("/upload_lecture", methods=["GET", "POST"], endpoint="upload_lecture")
 def upload_lecture():
@@ -178,7 +181,7 @@ def upload_lecture():
     return render_template("upload_lecture.html", data=lectures.to_dict(orient="records"))
 
 # ─────────────────────────────
-# 로그아웃
+# 🚪 로그아웃
 # ─────────────────────────────
 @app.route("/logout", endpoint="logout")
 def logout():
@@ -186,7 +189,7 @@ def logout():
     return redirect(url_for("home"))
 
 # ─────────────────────────────
-# Render 헬스체크
+# 💓 Render 헬스체크
 # ─────────────────────────────
 @app.route("/health")
 def health():
@@ -195,4 +198,3 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
