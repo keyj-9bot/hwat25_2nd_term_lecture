@@ -1,1 +1,1 @@
-cid,qid,email,comment,password,created_at
+question_id,comment,email,date
