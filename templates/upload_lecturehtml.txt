@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-3">📘 강의자료 업로드</h3>
+
+<form method="POST" enctype="multipart/form-data">
+  <input type="text" name="title" class="form-control mb-2" placeholder="자료 제목" required>
+  <textarea name="content" class="form-control mb-2" rows="2" placeholder="내용 입력" required></textarea>
+
+  <!-- 📂 파일 입력 영역 -->
+  <div id="fileInputs">
+    <input type="file" name="files" class="form-control mb-1">
+  </div>
+  <div class="d-flex mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
+  </div>
+
+  <!-- 🔗 링크 입력 영역 -->
+  <div id="linkInputs">
+    <input type="text" name="link1" class="form-control mb-1" placeholder="https:// 관련 사이트 링크">
+  </div>
+  <div class="d-flex mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addLinkInput()">＋ 링크 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLinkInput()">－ 링크 삭제</button>
+  </div>
+
+  <button type="submit" class="btn btn-success w-100 mt-2">📤 업로드</button>
+</form>
+
+<hr>
+
+<!-- 📚 업로드된 강의자료 목록 -->
+<h4 class="fw-bold mt-4">📚 업로드된 자료</h4>
+
+{% if lectures and lectures|length > 0 %}
+  {% for lec in lectures %}
+  <div class="border rounded p-3 mb-3 bg-light shadow-sm">
+    <h5 class="fw-bold">{{ lec.title or '제목 없음' }}</h5>
+    <p>{{ lec.content or '' }}</p>
+
+    {% if lec.files %}
+      <p>📎 파일:
+        {% for f in (lec.files or '').split(';') if f.strip() %}
+          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
+    {% endif %}
+
+    {% if lec.links %}
+      <p>🔗 링크:
+        {% for l in (lec.links or '').split(';') if l.strip() %}
+          <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
+    {% endif %}
+
+    <small class="text-muted">업로드: {{ lec.date or '시간 미기록' }}</small>
+
+    <div class="mt-2">
+      {% if lec.confirmed|string != 'yes' %}
+
+        <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
+          <button class="btn btn-sm btn-outline-success">✅ 게시 확정</button>
+        </form>
+      {% else %}
+        <span class="badge bg-success">게시 완료</span>
+      {% endif %}
+
+      <form action="{{ url_for('delete_lecture', lec_index=loop.index0) }}" method="POST" style="display:inline;">
+        <button class="btn btn-sm btn-outline-danger">🗑️ 삭제</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted">등록된 자료가 없습니다.</p>
+{% endif %}
+
+<!-- 🧩 JS: 파일·링크 추가/삭제 -->
+<script>
+function addFileInput() {
+  const div = document.createElement('div');
+  div.innerHTML = '<input type="file" name="files" class="form-control mb-1">';
+  document.getElementById('fileInputs').appendChild(div);
+}
+
+function removeFileInput() {
+  const div = document.getElementById('fileInputs');
+  if (div.children.length > 1) div.removeChild(div.lastChild);
+}
+
+function addLinkInput() {
+  const div = document.createElement('div');
+  div.innerHTML = '<input type="text" name="link" class="form-control mb-1" placeholder="https:// 추가 링크">';
+  document.getElementById('linkInputs').appendChild(div);
+}
+
+function removeLinkInput() {
+  const div = document.getElementById('linkInputs');
+  if (div.children.length > 1) div.removeChild(div.lastChild);
+}
+</script>
+
+{% endblock %}
+
+
+

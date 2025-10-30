@@ -1,99 +1,109 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h3 class="fw-bold mb-3">📚 강의자료 게시판</h3>
+<h3 class="fw-bold mb-4 text-primary">📚 학습자료 & Q&A 통합 페이지</h3>
 
+<!-- ✅ 게시 확정된 강의자료 목록 -->
 {% if lectures and lectures|length > 0 %}
   {% for lec in lectures %}
   <div class="border rounded p-3 mb-3 bg-light shadow-sm">
-    <h5 class="fw-bold">{{ lec.title or '제목 없음' }}</h5>
-    <p>{{ lec.content or '' }}</p>
+    <div class="d-flex justify-content-between">
+      <h5 class="fw-bold text-primary">{{ lec.title or '제목 없음' }}</h5>
+      {% if is_professor %}
+        <form method="POST" action="{{ url_for('delete_confirmed', index=loop.index0) }}">
+          <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+        </form>
+      {% endif %}
+    </div>
+    <p class="mb-2">{{ lec.content or '' }}</p>
 
     {% if lec.files %}
-      <p>📎 파일:
+      <p class="mb-1">📎 <b>첨부 파일:</b>
         {% for f in (lec.files or '').split(';') if f.strip() %}
-          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
+          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank" class="text-decoration-none">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
     {% endif %}
 
     {% if lec.links %}
-      <p>🔗 링크:
+      <p class="mb-1">🔗 <b>관련 링크:</b>
         {% for l in (lec.links or '').split(';') if l.strip() %}
-          <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
+          <a href="{{ l }}" target="_blank" class="text-decoration-none text-success">{{ l }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
     {% endif %}
-
-    <div class="d-flex justify-content-between align-items-center mt-2">
-      <small class="text-muted">📅 업로드: {{ lec.date or '시간 미기록' }}</small>
-      <form action="{{ url_for('delete_confirmed', index=loop.index0) }}" method="POST" style="display:inline;">
-        <button class="btn btn-sm btn-outline-danger">🗑 삭제</button>
-      </form>
-    </div>
+    <small class="text-secondary">📅 {{ lec.date }}</small>
   </div>
   {% endfor %}
 {% else %}
-  <p class="text-muted">게시 확정된 강의자료가 아직 없습니다.</p>
+  <p class="text-muted">아직 게시된 학습 자료가 없습니다.</p>
 {% endif %}
 
+<hr class="my-4">
 
-<hr class="mt-5 mb-3">
-<h4 class="fw-bold">💬 학습 Q&A</h4>
+<!-- 💬 Q&A 섹션 -->
+<h4 class="fw-bold text-dark mb-3">💬 학습 Q&A</h4>
 
-<!-- 🟩 질문 등록 -->
+<!-- ✅ 질문 등록 -->
 <form method="POST" action="{{ url_for('add_question') }}" class="mb-4">
-  <input type="text" name="title" class="form-control mb-2" placeholder="질문 제목을 입력하세요" required>
-  <textarea name="content" class="form-control mb-2" rows="2" placeholder="질문 내용을 입력하세요" required></textarea>
-  <button class="btn btn-primary btn-sm">등록</button>
+  <div class="card p-3 shadow-sm">
+    <h6 class="fw-bold mb-2">새 질문 등록</h6>
+    <input type="text" name="title" placeholder="제목을 입력하세요" class="form-control mb-2" required>
+    <textarea name="content" rows="3" class="form-control mb-2" placeholder="내용을 입력하세요" required></textarea>
+    <button type="submit" class="btn btn-primary btn-sm">질문 등록</button>
+  </div>
 </form>
 
-<!-- 질문 목록 -->
+<!-- ✅ 질문 목록 -->
 {% if questions and questions|length > 0 %}
   {% for q in questions %}
-  <div class="border rounded p-3 mb-3 bg-white shadow-sm">
-    <h5 class="fw-bold text-primary">{{ q.title }}</h5>
-    <p>{{ q.content }}</p>
-    <small class="text-muted">작성자: {{ q.email }} | {{ q.date }}</small><br>
+  <div class="card p-3 mb-3 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center">
+      <h6 class="fw-bold">{{ q.title }}</h6>
+      <small class="text-secondary">{{ q.date }}</small>
+    </div>
+    <p class="mb-2">{{ q.content }}</p>
+    <p class="mb-2 text-muted small">작성자: {{ q.email }}</p>
 
-    {% if session.email == q.email or "professor" in session.email %}
-      <!-- ✏️ 수정 -->
-      <form action="{{ url_for('edit_question', q_id=q.id) }}" method="POST" class="d-inline">
-        <input type="text" name="edited_title" class="form-control form-control-sm d-inline-block" style="width:150px" placeholder="새 제목">
-        <input type="text" name="edited_content" class="form-control form-control-sm d-inline-block" style="width:200px" placeholder="수정할 내용">
-        <button class="btn btn-sm btn-outline-secondary">수정</button>
+    <!-- ✏️ 수정/삭제 (작성자 또는 교수) -->
+    {% if session.email == q.email or is_professor %}
+    <div class="mb-2">
+      <form method="POST" action="{{ url_for('edit_question', q_id=q.id) }}" class="d-inline">
+        <input type="text" name="edited_title" placeholder="제목 수정" class="form-control form-control-sm mb-1">
+        <textarea name="edited_content" placeholder="내용 수정" class="form-control form-control-sm mb-1"></textarea>
+        <button type="submit" class="btn btn-sm btn-outline-secondary">수정</button>
       </form>
-
-      <!-- 🗑️ 삭제 -->
-      <form action="{{ url_for('delete_question', q_id=q.id) }}" method="POST" class="d-inline">
-        <button class="btn btn-sm btn-outline-danger">삭제</button>
+      <form method="POST" action="{{ url_for('delete_question', q_id=q.id) }}" class="d-inline">
+        <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
       </form>
+    </div>
     {% endif %}
 
-    <!-- 💬 댓글 구역 -->
-    <form method="POST" action="{{ url_for('add_comment', q_id=q.id) }}" class="mt-3">
-      <input type="text" name="comment" class="form-control form-control-sm mb-1" placeholder="댓글 입력..." required>
-      <button class="btn btn-sm btn-outline-primary">댓글 등록</button>
+    <!-- 💬 댓글 목록 -->
+    <div class="border-start ps-3 mt-2">
+      {% for c in comments if c.question_id == q.id %}
+        <div class="bg-light rounded p-2 mb-1">
+          <p class="mb-1">{{ c.comment }}</p>
+          <small class="text-muted">작성자: {{ c.email }} | {{ c.date }}</small>
+
+          {% if session.email == c.email or is_professor %}
+          <form method="POST" action="{{ url_for('edit_comment', q_id=q.id, c_idx=loop.index0) }}" class="mt-1">
+            <input type="text" name="edited_comment" class="form-control form-control-sm mb-1" placeholder="댓글 수정">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">수정</button>
+          </form>
+          <form method="POST" action="{{ url_for('delete_comment', q_id=q.id, c_idx=loop.index0) }}" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+          </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- 💭 댓글 추가 -->
+    <form method="POST" action="{{ url_for('add_comment', q_id=q.id) }}" class="mt-2">
+      <input type="text" name="comment" placeholder="댓글을 입력하세요" class="form-control form-control-sm mb-1" required>
+      <button type="submit" class="btn btn-sm btn-success">댓글 등록</button>
     </form>
-
-    {% for c in comments if c.question_id == q.id %}
-      <div class="ms-3 border-start ps-2 mt-1">
-        <small>{{ c.comment }} - <span class="text-muted">{{ c.email }}</span> ({{ c.date }})</small><br>
-
-        {% if session.email == c.email or "professor" in session.email %}
-          <!-- ✏️ 댓글 수정 -->
-          <form action="{{ url_for('edit_comment', q_id=q.id, c_idx=loop.index0) }}" method="POST" class="d-inline">
-            <input type="text" name="edited_comment" class="form-control form-control-sm d-inline-block" style="width:200px" placeholder="수정할 내용 입력">
-            <button class="btn btn-sm btn-outline-secondary">수정</button>
-          </form>
-
-          <!-- 🗑️ 댓글 삭제 -->
-          <form action="{{ url_for('delete_comment', q_id=q.id, c_idx=loop.index0) }}" method="POST" class="d-inline">
-            <button class="btn btn-sm btn-outline-danger">삭제</button>
-          </form>
-        {% endif %}
-      </div>
-    {% endfor %}
   </div>
   {% endfor %}
 {% else %}
@@ -101,9 +111,3 @@
 {% endif %}
 
 {% endblock %}
-
-
-
-
-
-

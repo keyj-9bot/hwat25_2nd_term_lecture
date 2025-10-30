@@ -21,13 +21,17 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(hours=2),
 )
 
+
 # ───────────── 설정 ─────────────
 DATA_LECTURE = "lecture_data.csv"
 DATA_QUESTIONS = "questions.csv"
 DATA_COMMENTS = "comments.csv"
+DATA_UPLOADS = "uploads_data.csv"     # ✅ 업로드 전용 CSV
+DATA_POSTS = "posts_data.csv"         # ✅ 학습사이트 게시 전용 CSV
 ALLOWED_EMAILS = "allowed_emails.txt"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path, cols):
@@ -109,8 +113,9 @@ def logout():
 # ───────────── 교수용 업로드 페이지 ─────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    df = load_csv(DATA_LECTURE, ["title","content","files","links","date","confirmed"])
+    df = load_csv(DATA_UPLOADS, ["title","content","files","links","date","confirmed"])  # ✅ 수정
     df = df.fillna('')
+
 
     if request.method == "POST":
         try:
@@ -146,7 +151,7 @@ def upload_lecture():
                 "confirmed": confirmed
             }
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-            save_csv(DATA_LECTURE, df)
+            save_csv(DATA_UPLOADS, df)
             flash("자료가 성공적으로 업로드되었습니다.", "success")
         except Exception as e:
             print(f"[UPLOAD ERROR] {e}")
@@ -166,78 +171,86 @@ def uploaded_file(filename):
 # ✅ 게시 확정
 @app.route("/confirm_lecture/<int:index>", methods=["POST"])
 def confirm_lecture(index):
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
-    if 0 <= index < len(df):
-        df.at[index, "confirmed"] = "yes"
-        save_csv(DATA_LECTURE, df)
-        flash("📢 해당 자료가 게시 확정되었습니다.", "success")
+    df_uploads = load_csv(DATA_UPLOADS, ["title","content","files","links","date","confirmed"])
+    df_posts = load_csv(DATA_POSTS, ["title","content","files","links","date","confirmed"])
+    if 0 <= index < len(df_uploads):
+        row = df_uploads.iloc[index]
+        row["confirmed"] = "yes"
+        # 게시DB에 추가 (중복방지)
+        if not ((df_posts["title"] == row["title"]) & (df_posts["date"] == row["date"])).any():
+            df_posts = pd.concat([df_posts, pd.DataFrame([row])], ignore_index=True)
+            save_csv(DATA_POSTS, df_posts)
+        df_uploads.at[index, "confirmed"] = "yes"
+        save_csv(DATA_UPLOADS, df_uploads)
+        flash("📢 학습사이트에 게시되었습니다.", "success")
     return redirect(url_for("upload_lecture"))
+
 
 # 🗑️ 강의자료 삭제
-@app.route("/delete_lecture/<int:lec_index>", methods=["POST"])
-def delete_lecture(lec_index):
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
-    if lec_index < len(df):
-        deleted_row = df.iloc[lec_index]
-        df = df.drop(index=lec_index).reset_index(drop=True)
-        save_csv(DATA_LECTURE, df)
-        # 파일 삭제
-        if deleted_row.get("files"):
-            for f in str(deleted_row["files"]).split(";"):
-                path = os.path.join(UPLOAD_FOLDER, f.strip())
-                if os.path.exists(path):
-                    os.remove(path)
-        flash("강의자료가 삭제되었습니다 🗑️", "info")
+@app.route("/delete_lecture/<int:index>", methods=["POST"])
+def delete_lecture(index):
+    """업로드 데이터만 삭제 (게시자료는 영향 없음)"""
+    df = load_csv(DATA_UPLOADS, ["title","content","files","links","date","confirmed"])
+    if 0 <= index < len(df):
+        deleted_row = df.iloc[index]
+        df = df.drop(index=index).reset_index(drop=True)
+        save_csv(DATA_UPLOADS, df)
+        flash("업로드 자료가 삭제되었습니다 (게시자료는 유지).", "info")
     return redirect(url_for("upload_lecture"))
 
-# 🗑️ 학습사이트 게시자료 삭제
+
+# 🗑️ 학습사이트 게시자료 삭제(교수만)
 @app.route("/delete_confirmed/<int:index>", methods=["POST"])
 def delete_confirmed(index):
-    df = load_csv(DATA_LECTURE, ["title","content","files","links","date","confirmed"])
-    df = df.fillna('')
-    if 0 <= index < len(df):
-        row = df.iloc[index]
-        for f in str(row.get("files", "")).split(";"):
-            f_path = os.path.join(UPLOAD_FOLDER, f.strip())
-            if os.path.exists(f_path):
-                os.remove(f_path)
-        df = df.drop(index=index).reset_index(drop=True)
-        save_csv(DATA_LECTURE, df)
+    email = session.get("email", "")
+    if email != get_professor_email():
+        flash("교수만 삭제할 수 있습니다.", "danger")
+        return redirect(url_for("lecture"))
+
+    df_posts = load_csv(DATA_POSTS, ["title","content","files","links","date","confirmed"])
+    if 0 <= index < len(df_posts):
+
+        df_posts = df_posts.drop(index=index).reset_index(drop=True)
+        save_csv(DATA_POSTS, df_posts)
         flash("게시된 자료가 삭제되었습니다.", "info")
     return redirect(url_for("lecture"))
 
-# ───────────── 학습 사이트 (강의자료 + Q&A) ─────────────
+
+# ───────────── 학습 사이트 (학생용 + Q&A 통합) ─────────────
 @app.route("/lecture")
 def lecture():
-    df_lecture = load_csv(DATA_LECTURE, ["title","content","files","links","date","confirmed"])
+    # 📘 게시 확정된 강의자료 로드
+    df_posts = load_csv(DATA_POSTS, ["title","content","files","links","date","confirmed"])
+    df_posts = df_posts.fillna('')
+
+    # 💬 Q&A 데이터 로드
     df_questions = load_csv(DATA_QUESTIONS, ["id","title","content","email","date"])
     df_comments = load_csv(DATA_COMMENTS, ["question_id","comment","email","date"])
 
-    df_lecture = df_lecture.fillna('')
-    df_lecture = df_lecture[df_lecture["confirmed"] == "yes"]
-
-    # ✅ 15일 이내 자료만 유지
+    # ✅ 15일 경과 자료 자동 삭제
     today = datetime.now()
-    valid_rows = []
-    for _, row in df_lecture.iterrows():
+    recent_posts = []
+    for _, row in df_posts.iterrows():
         try:
-            d = datetime.strptime(str(row["date"]), "%Y-%m-%d")
+            d = datetime.strptime(str(row["date"]).split()[0], "%Y-%m-%d")
             if (today - d).days <= 15:
-                valid_rows.append(row)
+                recent_posts.append(row)
         except:
             continue
 
-    df_lecture = pd.DataFrame(valid_rows, columns=["title","content","files","links","date","confirmed"])
-    save_csv(DATA_LECTURE, df_lecture)
+    df_posts = pd.DataFrame(recent_posts, columns=["title","content","files","links","date","confirmed"])
+    save_csv(DATA_POSTS, df_posts)
 
-    email = session.get("email")
+    # 📦 템플릿으로 모든 데이터 전달
     return render_template(
         "lecture.html",
-        lectures=df_lecture.to_dict("records"),
+        lectures=df_posts.to_dict("records"),
         questions=df_questions.to_dict("records"),
         comments=df_comments.to_dict("records"),
         session=session
     )
+
+
 
 # ───────────── 질문 등록/수정/삭제 ─────────────
 @app.route("/add_question", methods=["POST"])
