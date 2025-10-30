@@ -5,3 +5,4 @@ gunicorn==23.0.0
 requests==2.32.3
 beautifulsoup4==4.14.2
 skyfield==1.53
+chardet==5.2.0
