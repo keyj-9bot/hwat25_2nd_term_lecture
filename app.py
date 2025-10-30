@@ -138,10 +138,14 @@ def upload_lecture():
                 files = request.files.getlist("files")
                 for f in files:
                     if f and f.filename:
-                        filename = secure_filename(f.filename)
-                        save_path = os.path.join(UPLOAD_FOLDER, filename)
+                        # ✅ 한글 파일명 안전 저장 (공백 → _, 경로문자 제거)
+                        orig_name = f.filename
+                        safe_name = orig_name.replace(" ", "_").replace("/", "").replace("\\", "")
+                        save_path = os.path.join(UPLOAD_FOLDER, safe_name)
                         f.save(save_path)
-                        file_names.append(filename)
+                        file_names.append(safe_name)
+
+
             files_str = ";".join(file_names)
 
             # 🧩 새 행 추가
@@ -200,13 +204,6 @@ def confirm_lecture(index):
     return redirect(url_for("upload_lecture"))
 
 
-     
-
-
-
-
-
-
 
 
 # ❌ 강의자료 삭제
@@ -234,6 +231,27 @@ def delete_lecture(lec_index):
 
     return redirect(url_for("upload_lecture"))
 
+
+@app.route("/delete_confirmed/<int:index>", methods=["POST"])
+def delete_confirmed(index):
+    """학습사이트 게시자료 삭제 (교수용)"""
+    df = load_csv(DATA_LECTURE, ["title","content","files","links","date","confirmed"])
+    df = df.fillna('')
+    if 0 <= index < len(df):
+        row = df.iloc[index]
+
+        # 📁 업로드 파일 삭제
+        for f in str(row.get("files", "")).split(";"):
+            f_path = os.path.join(UPLOAD_FOLDER, f.strip())
+            if os.path.exists(f_path):
+                os.remove(f_path)
+
+        # 🗑️ CSV 행 삭제
+        df = df.drop(index=index).reset_index(drop=True)
+        df.to_csv(DATA_LECTURE, index=False, encoding="utf-8-sig")
+
+        flash("게시된 자료가 삭제되었습니다.", "info")
+    return redirect(url_for("lecture"))
 
 
 
