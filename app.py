@@ -29,38 +29,30 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ──────────────── CSV 로드/저장 ────────────────
+import chardet
+
 def load_csv(path, cols):
-    """CSV 안전 로드 (자동 인코딩 감지 + 복구)"""
-    import os
-    import chardet
-    import pandas as pd
-
-    if not os.path.exists(path):
-        return pd.DataFrame(columns=cols)
-
-    try:
-        # 기본 UTF-8 시도
-        return pd.read_csv(path, encoding="utf-8")
-    except UnicodeDecodeError:
+    """CSV 안전 로드 (자동 인코딩 감지)"""
+    import pandas as pd, os
+    if os.path.exists(path):
         try:
-            # 인코딩 자동 감지 후 재시도
+            # 🔹 인코딩 자동 감지
             with open(path, "rb") as f:
-                enc = chardet.detect(f.read())["encoding"] or "utf-8-sig"
-            print(f"[Auto Encoding Detection] {path}: {enc}")
+                raw = f.read()
+                enc = chardet.detect(raw)["encoding"] or "utf-8"
+
             return pd.read_csv(path, encoding=enc)
         except Exception as e:
-            print(f"[CSV Load Recovery Error] {path}: {e}")
-            return pd.DataFrame(columns=cols)
-    except Exception as e:
-        print(f"[CSV Load Error] {path}: {e}")
-        return pd.DataFrame(columns=cols)
+            print(f"[CSV Load Error] {e}")
+            pass
+    return pd.DataFrame(columns=cols)
+
 
 
 def save_csv(path, df):
-    """CSV 안전 저장 (UTF-8-SIG로 통일)"""
-    import os
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     df.to_csv(path, index=False, encoding="utf-8-sig")
+
 
 
 # ───────────── 공용 함수 ─────────────
@@ -131,8 +123,6 @@ def upload_lecture():
         return redirect(url_for("login"))
 
     df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
-
-    # ✅ confirmed 컬럼 없거나 NaN일 경우 자동 보정
     if "confirmed" not in df.columns:
         df["confirmed"] = "no"
     df["confirmed"] = df["confirmed"].fillna("no")
@@ -142,7 +132,7 @@ def upload_lecture():
         title = request.form.get("title", "").strip()
         content = request.form.get("content", "").strip()
 
-        # 파일 처리
+        # 📂 파일 처리
         uploaded_files = request.files.getlist("files")
         file_names = []
         for file in uploaded_files:
@@ -152,11 +142,11 @@ def upload_lecture():
                 file_names.append(safe_name)
         files_str = ";".join(file_names)
 
-        # 링크 처리
+        # 🔗 링크 처리
         links = [v for k, v in request.form.items() if k.startswith("link") and v.strip()]
         links_str = ";".join(links)
 
-        # CSV에 추가
+        # ✅ 새 행 추가 (기본 confirmed=no)
         new_row = {
             "title": title,
             "content": content,
@@ -171,7 +161,20 @@ def upload_lecture():
         flash("강의자료가 업로드되었습니다. '게시 확정'을 눌러야 학습사이트에 표시됩니다.", "success")
         return redirect(url_for("upload_lecture"))
 
-    return render_template("upload_lecture.html", lectures=df.to_dict("records"))
+    # 🔹 NaN → 문자열 변환 (float object 방지)
+    safe_lectures = []
+    for _, row in df.iterrows():
+        safe_lectures.append({
+            "title": str(row.get("title", "")),
+            "content": str(row.get("content", "")),
+            "files": str(row.get("files", "")),
+            "links": str(row.get("links", "")),
+            "date": str(row.get("date", "")),
+            "confirmed": str(row.get("confirmed", "no")),
+        })
+
+    return render_template("upload_lecture.html", lectures=safe_lectures)
+
 
 
 
@@ -188,25 +191,21 @@ def uploaded_file(filename):
 
 
 # ✅ 강의자료 게시 확정 (confirm)
-@app.route("/confirm_lecture", methods=["POST"])
-def confirm_lecture():
+@app.route("/confirm_lecture/<int:index>", methods=["POST"])
+def confirm_lecture(index):
     """게시 확정 버튼 처리"""
     if "email" not in session:
         return redirect(url_for("login"))
 
-    # HTML form에서 전달된 index 받기
-    index = int(request.form.get("index", -1))
-
-    # CSV 로드
     df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
 
-    # 유효한 인덱스 범위 내일 때만 처리
     if 0 <= index < len(df):
-        df.at[index, "confirmed"] = "yes"  # 혹은 True로 저장해도 무방 (문자열 통일 권장)
+        df.at[index, "confirmed"] = "yes"
         save_csv(DATA_LECTURE, df)
         flash("📢 해당 자료가 게시 확정되었습니다.", "success")
 
     return redirect(url_for("upload_lecture"))
+
 
      
 
