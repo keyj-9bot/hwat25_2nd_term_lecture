@@ -58,20 +58,20 @@
     <small class="text-muted">업로드: {{ lec.date or '시간 미기록' }}</small>
 
     <div class="mt-2">
-      {% if lec.confirmed|string != 'yes' %}
-        <!-- ✅ 최초 게시 -->
-        <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
-          <button class="btn btn-sm btn-outline-success">✅ 게시 확정</button>
-        </form>
-      {% else %}
-        {% if post_titles and lec.title not in post_titles %}
-          <!-- 🔁 학습사이트에서 삭제된 자료라면 재게시 버튼 표시 -->
+      {% if lec.title not in post_titles %}
+        {% if lec.confirmed|string != 'yes' %}
+          <!-- ✅ 최초 게시 -->
+          <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
+            <button class="btn btn-sm btn-outline-success">✅ 게시 확정</button>
+          </form>
+        {% else %}
+          <!-- 🔁 학습사이트에서 삭제된 자료라면 재게시 -->
           <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
             <button class="btn btn-sm btn-outline-primary">🔁 재게시</button>
           </form>
-        {% else %}
-          <span class="badge bg-success">게시 완료</span>
         {% endif %}
+      {% else %}
+        <span class="badge bg-success">게시 완료</span>
       {% endif %}
 
       <!-- 🗑️ 삭제 버튼 -->
@@ -111,4 +111,5 @@ function removeLinkInput() {
 </script>
 
 {% endblock %}
+
 
