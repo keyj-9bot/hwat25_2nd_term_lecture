@@ -55,6 +55,25 @@
       </p>
     {% endif %}
 
+    <!-- ✅ 게시 확정 버튼 추가 -->
+    {% if not lec.confirmed or lec.confirmed != 'yes' %}
+      <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="post" style="display:inline;">
+        <button type="submit" class="btn btn-success btn-sm">게시 확정</button>
+      </form>
+    {% else %}
+      <span class="text-success fw-bold">✅ 게시 완료</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+  <p class="text-muted">등록된 자료가 없습니다.</p>
+{% endif %}
+
+
+
+
+
+
     <small class="text-muted">업로드: {{ lec.date or '시간 미기록' }}</small>
 
     <div class="mt-2">

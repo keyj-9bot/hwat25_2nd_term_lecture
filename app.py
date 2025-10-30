@@ -182,18 +182,35 @@ def uploaded_file(filename):
         flash("파일을 찾을 수 없습니다.", "danger")
         return redirect(url_for("lecture"))
 
-# ✅ 강의자료 게시 확인
-@app.route("/confirm_lecture/<int:lec_index>", methods=["POST"])
-def confirm_lecture(lec_index):
-    """게시 확인(confirmed=True) 처리"""
+
+# ✅ 강의자료 게시 확정 (confirm)
+@app.route("/confirm_lecture", methods=["POST"])
+def confirm_lecture():
+    """게시 확정 버튼 처리"""
+    if "email" not in session:
+        return redirect(url_for("login"))
+
+    # HTML form에서 전달된 index 받기
+    index = int(request.form.get("index", -1))
+
+    # CSV 로드
     df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
 
-    if lec_index < len(df):
-        df.loc[lec_index, "confirmed"] = True
+    # 유효한 인덱스 범위 내일 때만 처리
+    if 0 <= index < len(df):
+        df.at[index, "confirmed"] = "yes"  # 혹은 True로 저장해도 무방 (문자열 통일 권장)
         save_csv(DATA_LECTURE, df)
-        flash("강의자료가 게시되었습니다 ✅", "success")
+        flash("📢 해당 자료가 게시 확정되었습니다.", "success")
 
     return redirect(url_for("upload_lecture"))
+
+     
+
+
+
+
+
+
 
 
 # ❌ 강의자료 삭제
