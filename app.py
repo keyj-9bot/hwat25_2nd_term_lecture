@@ -214,11 +214,12 @@ def delete_confirmed(index):
 # ───────────── 학습 사이트 (학생용) ─────────────
 @app.route("/lecture")
 def lecture():
+    # ✅ 강의자료 불러오기
     df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
     df_posts = df_posts.fillna('')
+    today = datetime.now()
 
     # ✅ 15일 경과 자료 자동 삭제
-    today = datetime.now()
     recent_posts = []
     for _, row in df_posts.iterrows():
         try:
@@ -227,12 +228,25 @@ def lecture():
                 recent_posts.append(row)
         except:
             continue
-
     df_posts = pd.DataFrame(recent_posts, columns=["title", "content", "files", "links", "date", "confirmed"])
     save_csv(DATA_POSTS, df_posts)
-
     lectures = df_posts.to_dict("records")
-    return render_template("lecture.html", lectures=lectures)
+
+    # ✅ 질문 및 댓글 불러오기
+    df_questions = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
+    df_comments = load_csv(DATA_COMMENTS, ["question_id", "comment", "email", "date"])
+
+    questions = df_questions.to_dict("records")
+    comments = df_comments.to_dict("records")
+
+    # ✅ 세 데이터 모두 템플릿에 전달
+    return render_template(
+        "lecture.html",
+        lectures=lectures,
+        questions=questions,
+        comments=comments
+    )
+
 
 # ───────────── 질문 등록/수정/삭제 ─────────────
 @app.route("/add_question", methods=["POST"])
