@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-📘 연암공대 화트25 학습지원시스템 (세션 안정형 Final Stable + Q&A 완전판)
+📘 연암공대 화트25 학습지원시스템 (Final Stable + Q&A 완전판)
 작성자: Key 교수님
 """
 
@@ -14,9 +14,11 @@ app = Flask(__name__)
 app.secret_key = "key_flask_secret"
 
 # ───────────── 세션 안정화 (Render HTTPS 환경 대응) ─────────────
-app.config["SESSION_COOKIE_SECURE"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "None"
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
+app.config.update(
+    SESSION_COOKIE_SECURE=True,           # HTTPS에서만 쿠키 허용
+    SESSION_COOKIE_SAMESITE="None",       # 크로스 도메인 세션 허용
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=2),
+)
 
 # ───────────── 설정 ─────────────
 DATA_LECTURE = "lecture_data.csv"
@@ -28,22 +30,41 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path, cols):
+    """CSV 안전 로드"""
     try:
         if os.path.exists(path):
             df = pd.read_csv(path)
-            missing_cols = [c for c in cols if c not in df.columns]
-            for col in missing_cols:
-                df[col] = ""
+            for c in cols:
+                if c not in df.columns:
+                    df[c] = ""
             return df[cols]
     except Exception as e:
         print(f"[CSV Load Error] {path}: {e}")
     return pd.DataFrame(columns=cols)
 
 def save_csv(path, df):
+    """CSV 안전 저장"""
     try:
         df.to_csv(path, index=False, encoding="utf-8-sig")
     except Exception as e:
         print(f"[CSV Save Error] {path}: {e}")
+
+# ───────────── 공용 함수 ─────────────
+def get_professor_email():
+    """allowed_emails.txt의 첫 줄(교수 이메일)을 반환"""
+    if os.path.exists(ALLOWED_EMAILS):
+        with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
+            for line in f:
+                email = line.strip()
+                if email:
+                    return email
+    return None
+
+# ───────────── 템플릿 공용 변수 주입 ─────────────
+@app.context_processor
+def inject_is_professor():
+    email = session.get("email")
+    return dict(is_professor=(email == get_professor_email()))
 
 # ───────────── 기본 라우트 ─────────────
 @app.route("/")
@@ -96,16 +117,13 @@ def upload_lecture():
         flash("로그인이 필요합니다.", "warning")
         return redirect(url_for("login"))
 
-    allowed = []
-    if os.path.exists(ALLOWED_EMAILS):
-        with open(ALLOWED_EMAILS, "r", encoding="utf-8") as f:
-            allowed = [e.strip() for e in f.readlines() if e.strip()]
-
-    if not allowed or email != allowed[0]:
+    professor_email = get_professor_email()
+    if not professor_email or email != professor_email:
         flash("접근 권한이 없습니다.", "danger")
         return redirect(url_for("home"))
 
     df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])
+
     if request.method == "POST":
         title = request.form["title"].strip()
         content = request.form["content"].strip()
@@ -116,11 +134,9 @@ def upload_lecture():
             files = request.files.getlist("files")
             for file in files:
                 if file and file.filename:
-                    # ⚙️ secure_filename + 한글 파일명 유지
                     original_name = file.filename
                     safe_name = secure_filename(original_name)
-                    save_path = os.path.join(UPLOAD_FOLDER, safe_name)
-                    file.save(save_path)
+                    file.save(os.path.join(UPLOAD_FOLDER, safe_name))
                     filenames.append(original_name)
 
         df.loc[len(df)] = {
@@ -138,7 +154,6 @@ def upload_lecture():
 
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
-    # 경로 문제 방지
     try:
         return send_from_directory(UPLOAD_FOLDER, filename)
     except FileNotFoundError:
@@ -237,9 +252,8 @@ def delete_comment(q_id, c_idx):
 def health():
     return "OK", 200
 
-
-
 # ───────────── 앱 실행 ─────────────
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
+    print(f"✅ Server running on port {port}")
     app.run(host="0.0.0.0", port=port)

@@ -17,21 +17,11 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
 
-        {# 📘 교수 계정만 강의자료 업로드 메뉴 표시 #}
-        {% if session.get('email') %}
-          {% set allowed_email = '' %}
-          {% if os.path.exists('allowed_emails.txt') %}
-            {% with open('allowed_emails.txt', 'r', encoding='utf-8') as f %}
-              {% set lines = f.readlines() %}
-              {% if lines %}{% set allowed_email = lines[0].strip() %}{% endif %}
-            {% endwith %}
-          {% endif %}
-
-          {% if session.get('email') == allowed_email %}
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('upload_lecture') }}">📤 강의자료 업로드</a>
-            </li>
-          {% endif %}
+        {# 📘 교수 계정일 경우에만 강의자료 업로드 버튼 표시 #}
+        {% if is_professor %}
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('upload_lecture') }}">📤 강의자료 업로드</a>
+        </li>
         {% endif %}
 
         <li class="nav-item">
