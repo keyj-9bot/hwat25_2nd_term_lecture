@@ -34,13 +34,6 @@
 <h4 class="fw-bold mt-4">📚 업로드된 자료</h4>
 
 {% if lectures and lectures|length > 0 %}
-
-  {# ✅ 현재 게시 완료된 자료 제목 목록 저장 #}
-  {% set post_titles = [] %}
-  {% for p in lectures if p.confirmed == 'yes' %}
-    {% set _ = post_titles.append(p.title) %}
-  {% endfor %}
-
   {% for lec in lectures %}
   <div class="border rounded p-3 mb-3 bg-light shadow-sm">
     <h5 class="fw-bold">{{ lec.title or '제목 없음' }}</h5>
@@ -71,7 +64,7 @@
           <button class="btn btn-sm btn-outline-success">✅ 게시 확정</button>
         </form>
       {% else %}
-        {% if lec.title not in post_titles %}
+        {% if post_titles and lec.title not in post_titles %}
           <!-- 🔁 학습사이트에서 삭제된 자료라면 재게시 버튼 표시 -->
           <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
             <button class="btn btn-sm btn-outline-primary">🔁 재게시</button>

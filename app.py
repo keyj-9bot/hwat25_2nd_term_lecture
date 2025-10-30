@@ -156,7 +156,15 @@ def upload_lecture():
             flash("업로드 중 오류가 발생했습니다.", "danger")
         return redirect(url_for("upload_lecture"))
 
-    return render_template("upload_lecture.html", lectures=df.to_dict("records"))
+    # ✅ 학습사이트 게시 목록 로드 (재게시 버튼용) ← ★ 이 위치로 이동해야 정상 작동
+    df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
+    post_titles = df_posts["title"].dropna().tolist()
+
+    # ✅ post_titles를 함께 전달
+    return render_template("upload_lecture.html", lectures=df.to_dict("records"), post_titles=post_titles)
+
+
+
 
 
 @app.route("/uploads/<path:filename>")
