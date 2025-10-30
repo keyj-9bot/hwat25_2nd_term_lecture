@@ -28,20 +28,22 @@ ALLOWED_EMAILS = "allowed_emails.txt"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ───────────── CSV 로드/저장 ─────────────
+# ──────────────── CSV 로드/저장 ────────────────
 def load_csv(path, cols):
     """CSV 안전 로드 (자동 인코딩 감지 + 복구)"""
+    import os
     import chardet
+    import pandas as pd
 
     if not os.path.exists(path):
         return pd.DataFrame(columns=cols)
 
     try:
-        # 먼저 utf-8로 시도
+        # 기본 UTF-8 시도
         return pd.read_csv(path, encoding="utf-8")
     except UnicodeDecodeError:
         try:
-            # 인코딩 감지 후 재시도
+            # 인코딩 자동 감지 후 재시도
             with open(path, "rb") as f:
                 enc = chardet.detect(f.read())["encoding"] or "utf-8-sig"
             print(f"[Auto Encoding Detection] {path}: {enc}")
@@ -52,6 +54,13 @@ def load_csv(path, cols):
     except Exception as e:
         print(f"[CSV Load Error] {path}: {e}")
         return pd.DataFrame(columns=cols)
+
+
+def save_csv(path, df):
+    """CSV 안전 저장 (UTF-8-SIG로 통일)"""
+    import os
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    df.to_csv(path, index=False, encoding="utf-8-sig")
 
 
 # ───────────── 공용 함수 ─────────────
