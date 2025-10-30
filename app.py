@@ -268,7 +268,7 @@ def edit_question(q_id):
     df = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
     if 0 <= q_id - 1 < len(df):
         target = df.iloc[q_id - 1]
-        if target["email"] == email or "professor" in email:
+        if target["email"] == email or email == get_professor_email():
             new_title = request.form.get("edited_title", "").strip()
             new_content = request.form.get("edited_content", "").strip()
             if new_title:
@@ -287,7 +287,7 @@ def delete_question(q_id):
     df = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
     if 0 <= q_id - 1 < len(df):
         target = df.iloc[q_id - 1]
-        if target["email"] == email or "professor" in email:
+        if target["email"] == email or email == get_professor_email():
             df = df.drop(index=q_id - 1).reset_index(drop=True)
             save_csv(DATA_QUESTIONS, df)
             flash("질문이 삭제되었습니다.", "info")
@@ -322,7 +322,7 @@ def edit_comment(q_id, c_idx):
     df = load_csv(DATA_COMMENTS, ["question_id", "comment", "email", "date"])
     if 0 <= c_idx < len(df):
         target = df.iloc[c_idx]
-        if target["question_id"] == q_id and (target["email"] == email or "professor" in email):
+        if target["question_id"] == q_id and (target["email"] == email or email == get_professor_email()):
             new_comment = request.form.get("edited_comment", "").strip()
             df.at[c_idx, "comment"] = new_comment
             df.at[c_idx, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -337,11 +337,12 @@ def delete_comment(q_id, c_idx):
     df = load_csv(DATA_COMMENTS, ["question_id", "comment", "email", "date"])
     if 0 <= c_idx < len(df):
         target = df.iloc[c_idx]
-        if target["question_id"] == q_id and (target["email"] == email or "professor" in email):
+        if target["question_id"] == q_id and (target["email"] == email or email == get_professor_email()):
             df = df.drop(index=c_idx).reset_index(drop=True)
             save_csv(DATA_COMMENTS, df)
             flash("댓글이 삭제되었습니다.", "info")
     return redirect(url_for("lecture"))
+
 
 # ───────────── Health Check ─────────────
 @app.route("/health")
