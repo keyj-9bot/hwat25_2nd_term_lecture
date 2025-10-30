@@ -122,7 +122,8 @@ def upload_lecture():
         flash("접근 권한이 없습니다.", "danger")
         return redirect(url_for("home"))
 
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])
+    # ✅ confirmed 컬럼 포함
+    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
 
     if request.method == "POST":
         title = request.form["title"].strip()
@@ -139,18 +140,25 @@ def upload_lecture():
                     file.save(os.path.join(UPLOAD_FOLDER, safe_name))
                     filenames.append(original_name)
 
+        # ✅ 게시 확정 전 상태로 저장
         df.loc[len(df)] = {
             "title": title,
             "content": content,
             "files": "; ".join(filenames),
             "links": links,
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M")
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "confirmed": False
         }
+
         save_csv(DATA_LECTURE, df)
-        flash("강의자료가 게시되었습니다.", "success")
+        flash("강의자료가 업로드되었습니다. ‘게시 확정’을 눌러야 학습사이트에 표시됩니다.", "success")
         return redirect(url_for("upload_lecture"))
 
     return render_template("upload_lecture.html", lectures=df.to_dict("records"))
+
+
+
+
 
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
@@ -212,11 +220,15 @@ def lecture():
         flash("로그인이 필요합니다.", "warning")
         return redirect(url_for("login"))
 
-    df_lecture = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])
+    # ✅ confirmed 컬럼 포함해서 불러오기
+    df_lecture = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
     df_questions = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
     df_comments = load_csv(DATA_COMMENTS, ["question_id", "comment", "email"])
 
-    # 15일 지난 강의자료 자동삭제
+    # ✅ 게시 확정된 자료만 학생에게 보이도록 필터
+    df_lecture = df_lecture[df_lecture["confirmed"] == True]
+
+    # ✅ 15일 지난 강의자료 자동삭제 (confirmed 포함)
     today = datetime.now()
     valid_rows = []
     for _, row in df_lecture.iterrows():
@@ -224,9 +236,12 @@ def lecture():
             d = datetime.strptime(str(row["date"]), "%Y-%m-%d %H:%M")
             if (today - d).days <= 15:
                 valid_rows.append(row)
-        except:
+        except Exception as e:
+            print(f"[Date Parse Error] {e}")
             continue
-    df_lecture = pd.DataFrame(valid_rows, columns=["title", "content", "files", "links", "date"])
+
+    # confirmed 컬럼까지 유지
+    df_lecture = pd.DataFrame(valid_rows, columns=["title", "content", "files", "links", "date", "confirmed"])
     save_csv(DATA_LECTURE, df_lecture)
 
     # 질문 등록
@@ -251,6 +266,7 @@ def lecture():
         comments=df_comments.to_dict("records"),
         user_email=email,
     )
+
 
 # 💬 댓글 등록
 @app.route("/add_comment/<int:question_id>", methods=["POST"])
