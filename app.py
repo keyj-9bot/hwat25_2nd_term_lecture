@@ -112,7 +112,7 @@ def logout():
 # ───────────── 교수용 업로드 페이지 ─────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
+    df = load_csv(DATA_UPLOADS, ["title", "content", "files", "links", "date", "confirmed"])
     df = df.fillna('')
 
     if request.method == "POST":
