@@ -58,7 +58,8 @@
     <small class="text-muted">업로드: {{ lec.date or '시간 미기록' }}</small>
 
     <div class="mt-2">
-      {% if not lec.confirmed or lec.confirmed != 'yes' %}
+      {% if lec.confirmed|string != 'yes' %}
+
         <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
           <button class="btn btn-sm btn-outline-success">✅ 게시 확정</button>
         </form>
