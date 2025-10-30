@@ -160,6 +160,50 @@ def uploaded_file(filename):
         flash("파일을 찾을 수 없습니다.", "danger")
         return redirect(url_for("lecture"))
 
+# ✅ 강의자료 게시 확인
+@app.route("/confirm_lecture/<int:lec_index>", methods=["POST"])
+def confirm_lecture(lec_index):
+    """게시 확인(confirmed=True) 처리"""
+    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
+
+    if lec_index < len(df):
+        df.loc[lec_index, "confirmed"] = True
+        save_csv(DATA_LECTURE, df)
+        flash("강의자료가 게시되었습니다 ✅", "success")
+
+    return redirect(url_for("upload_lecture"))
+
+
+# ❌ 강의자료 삭제
+@app.route("/delete_lecture/<int:lec_index>", methods=["POST"])
+def delete_lecture(lec_index):
+    """강의자료 삭제"""
+    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
+
+    if lec_index < len(df):
+        deleted_row = df.iloc[lec_index]
+        df = df.drop(index=lec_index).reset_index(drop=True)
+        save_csv(DATA_LECTURE, df)
+
+        # 파일 삭제 (옵션)
+        if deleted_row.get("files"):
+            for f in str(deleted_row["files"]).split(";"):
+                path = os.path.join(UPLOAD_FOLDER, f.strip())
+                if os.path.exists(path):
+                    try:
+                        os.remove(path)
+                    except Exception:
+                        pass
+
+        flash("강의자료가 삭제되었습니다 🗑️", "info")
+
+    return redirect(url_for("upload_lecture"))
+
+
+
+
+
+
 # ───────────── 학습 사이트 (강의자료 + Q&A) ─────────────
 @app.route("/lecture", methods=["GET", "POST"])
 def lecture():

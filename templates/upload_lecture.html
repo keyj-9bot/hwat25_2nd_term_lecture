@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+
 <h3 class="fw-bold mb-3">📘 강의자료 업로드</h3>
 
 <form method="POST" enctype="multipart/form-data">
@@ -31,36 +32,37 @@
 
 <!-- 📚 업로드된 강의자료 목록 -->
 <h4 class="fw-bold mt-4">📚 업로드된 자료</h4>
-{% if lectures %}
+
+{% if lectures and lectures|length > 0 %}
   {% for lec in lectures %}
   <div class="border rounded p-3 mb-3 bg-light shadow-sm">
-    <h5 class="fw-bold">{{ lec['title'] }}</h5>
-    <p>{{ lec['content'] }}</p>
+    <h5 class="fw-bold">{{ lec.title or '제목 없음' }}</h5>
+    <p>{{ lec.content or '' }}</p>
 
-    {% if lec['files'] %}
+    {% if lec.files %}
       <p>📎 파일:
-        {% for f in (lec['files'] or '').split(';') if f.strip() %}
+        {% for f in (lec.files or '').split(';') if f.strip() %}
           <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
     {% endif %}
 
-    {% if lec['links'] %}
+    {% if lec.links %}
       <p>🔗 링크:
-        {% for l in (lec['links'] or '').split(';') if l.strip() %}
+        {% for l in (lec.links or '').split(';') if l.strip() %}
           <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
         {% endfor %}
       </p>
     {% endif %}
 
-    <small class="text-muted">업로드: {{ lec['date'] }}</small>
+    <small class="text-muted">업로드: {{ lec.date or '시간 미기록' }}</small>
 
     <div class="mt-2">
-      {% if lec['confirmed'] == False %}
+      {% if lec.confirmed is defined and not lec.confirmed %}
         <form action="{{ url_for('confirm_lecture', lec_index=loop.index0) }}" method="POST" style="display:inline;">
           <button class="btn btn-sm btn-outline-success">✅ 확인(게시)</button>
         </form>
-      {% else %}
+      {% elif lec.confirmed is defined and lec.confirmed %}
         <span class="badge bg-success">게시 완료</span>
       {% endif %}
 
@@ -98,7 +100,9 @@ function removeLinkInput() {
   if (div.children.length > 1) div.removeChild(div.lastChild);
 }
 </script>
+
 {% endblock %}
+
 
 
 
