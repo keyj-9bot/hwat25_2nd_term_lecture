@@ -251,15 +251,20 @@ def lecture():
         flash("로그인이 필요합니다.", "warning")
         return redirect(url_for("login"))
 
-    # ✅ confirmed 컬럼 포함해서 불러오기
+    # ✅ 안전한 CSV 로드
     df_lecture = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
     df_questions = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
     df_comments = load_csv(DATA_COMMENTS, ["question_id", "comment", "email"])
 
-    # ✅ 게시 확정된 자료만 학생에게 보이도록 필터
-    df_lecture = df_lecture[df_lecture["confirmed"] == True]
+    # ✅ confirmed 컬럼 보정 (없거나 NaN일 경우 'no'로 설정)
+    if "confirmed" not in df_lecture.columns:
+        df_lecture["confirmed"] = "no"
+    df_lecture["confirmed"] = df_lecture["confirmed"].fillna("no")
 
-    # ✅ 15일 지난 강의자료 자동삭제 (confirmed 포함)
+    # ✅ "yes"로 표시된 게시 확정 자료만 표시
+    df_lecture = df_lecture[df_lecture["confirmed"].astype(str).str.lower() == "yes"]
+
+    # ✅ 15일 이내 자료만 유지 (날짜 오류 발생시 무시)
     today = datetime.now()
     valid_rows = []
     for _, row in df_lecture.iterrows():
@@ -271,11 +276,10 @@ def lecture():
             print(f"[Date Parse Error] {e}")
             continue
 
-    # confirmed 컬럼까지 유지
     df_lecture = pd.DataFrame(valid_rows, columns=["title", "content", "files", "links", "date", "confirmed"])
     save_csv(DATA_LECTURE, df_lecture)
 
-    # 질문 등록
+    # ✅ Q&A 질문 등록
     if request.method == "POST" and "title" in request.form:
         new_id = len(df_questions) + 1
         new_q = {
