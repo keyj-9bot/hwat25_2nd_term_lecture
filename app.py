@@ -30,24 +30,29 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path, cols):
-    """CSV 안전 로드"""
+    """CSV 안전 로드 (자동 인코딩 감지 + 복구)"""
+    import chardet
+
+    if not os.path.exists(path):
+        return pd.DataFrame(columns=cols)
+
     try:
-        if os.path.exists(path):
-            df = pd.read_csv(path)
-            for c in cols:
-                if c not in df.columns:
-                    df[c] = ""
-            return df[cols]
+        # 먼저 utf-8로 시도
+        return pd.read_csv(path, encoding="utf-8")
+    except UnicodeDecodeError:
+        try:
+            # 인코딩 감지 후 재시도
+            with open(path, "rb") as f:
+                enc = chardet.detect(f.read())["encoding"] or "utf-8-sig"
+            print(f"[Auto Encoding Detection] {path}: {enc}")
+            return pd.read_csv(path, encoding=enc)
+        except Exception as e:
+            print(f"[CSV Load Recovery Error] {path}: {e}")
+            return pd.DataFrame(columns=cols)
     except Exception as e:
         print(f"[CSV Load Error] {path}: {e}")
-    return pd.DataFrame(columns=cols)
+        return pd.DataFrame(columns=cols)
 
-def save_csv(path, df):
-    """CSV 안전 저장"""
-    try:
-        df.to_csv(path, index=False, encoding="utf-8-sig")
-    except Exception as e:
-        print(f"[CSV Save Error] {path}: {e}")
 
 # ───────────── 공용 함수 ─────────────
 def get_professor_email():
