@@ -28,32 +28,26 @@ ALLOWED_EMAILS = "allowed_emails.txt"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ──────────────── CSV 로드/저장 ────────────────
-import chardet
-
+# ───────────── CSV 로드/저장 ─────────────
 def load_csv(path, cols):
-    """CSV 안전 로드 (자동 인코딩 감지)"""
-    import pandas as pd, os
-    if os.path.exists(path):
-        try:
-            # 🔹 인코딩 자동 감지
-            with open(path, "rb") as f:
-                raw = f.read()
-                enc = chardet.detect(raw)["encoding"] or "utf-8"
-
-            return pd.read_csv(path, encoding=enc)
-        except Exception as e:
-            print(f"[CSV Load Error] {e}")
-            pass
+    """CSV 안전 로드"""
+    try:
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            for c in cols:
+                if c not in df.columns:
+                    df[c] = ""
+            return df[cols]
+    except Exception as e:
+        print(f"[CSV Load Error] {path}: {e}")
     return pd.DataFrame(columns=cols)
 
-
-
 def save_csv(path, df):
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    df.to_csv(path, index=False, encoding="utf-8-sig")
-
-
+    """CSV 안전 저장"""
+    try:
+        df.to_csv(path, index=False, encoding="utf-8-sig")
+    except Exception as e:
+        print(f"[CSV Save Error] {path}: {e}")
 
 # ───────────── 공용 함수 ─────────────
 def get_professor_email():
@@ -115,72 +109,48 @@ def logout():
     flash("로그아웃되었습니다.", "info")
     return redirect(url_for("login"))
 
-# ───────────── 교수용 업로드 페이지 ─────────────
+# ───────────── 강의자료 업로드 ─────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    df = load_csv(DATA_LECTURE, ["title","content","files","links","date","confirmed"])
-    df = df.fillna('')  # ✅ NaN 방지 추가
-    return render_template("upload_lecture.html", lectures=df.to_dict("records"))
+    email = session.get("email")
+    if not email:
+        flash("로그인이 필요합니다.", "warning")
+        return redirect(url_for("login"))
 
+    professor_email = get_professor_email()
+    if not professor_email or email != professor_email:
+        flash("접근 권한이 없습니다.", "danger")
+        return redirect(url_for("home"))
 
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
-    if "confirmed" not in df.columns:
-        df["confirmed"] = "no"
-    df["confirmed"] = df["confirmed"].fillna("no")
+    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])
 
-    # ✅ 업로드 처리
     if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        content = request.form.get("content", "").strip()
+        title = request.form["title"].strip()
+        content = request.form["content"].strip()
+        links = "; ".join([v for k, v in request.form.items() if k.startswith("link") and v.strip()])
+        filenames = []
 
-        # 📂 파일 처리
-        uploaded_files = request.files.getlist("files")
-        file_names = []
-        for file in uploaded_files:
-            if file and file.filename:
-                safe_name = secure_filename(file.filename)
-                file.save(os.path.join(UPLOAD_FOLDER, safe_name))
-                file_names.append(safe_name)
-        files_str = ";".join(file_names)
+        if "files" in request.files:
+            files = request.files.getlist("files")
+            for file in files:
+                if file and file.filename:
+                    original_name = file.filename
+                    safe_name = secure_filename(original_name)
+                    file.save(os.path.join(UPLOAD_FOLDER, safe_name))
+                    filenames.append(original_name)
 
-        # 🔗 링크 처리
-        links = [v for k, v in request.form.items() if k.startswith("link") and v.strip()]
-        links_str = ";".join(links)
-
-        # ✅ 새 행 추가 (기본 confirmed=no)
-        new_row = {
+        df.loc[len(df)] = {
             "title": title,
             "content": content,
-            "files": files_str,
-            "links": links_str,
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "confirmed": "no"
+            "files": "; ".join(filenames),
+            "links": links,
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
-
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         save_csv(DATA_LECTURE, df)
-        flash("강의자료가 업로드되었습니다. '게시 확정'을 눌러야 학습사이트에 표시됩니다.", "success")
+        flash("강의자료가 게시되었습니다.", "success")
         return redirect(url_for("upload_lecture"))
 
-    # 🔹 NaN → 문자열 변환 (float object 방지)
-    safe_lectures = []
-    for _, row in df.iterrows():
-        safe_lectures.append({
-            "title": str(row.get("title", "")),
-            "content": str(row.get("content", "")),
-            "files": str(row.get("files", "")),
-            "links": str(row.get("links", "")),
-            "date": str(row.get("date", "")),
-            "confirmed": str(row.get("confirmed", "no")),
-        })
-
-    return render_template("upload_lecture.html", lectures=safe_lectures)
-
-
-
-
-
-
+    return render_template("upload_lecture.html", lectures=df.to_dict("records"))
 
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
@@ -190,31 +160,18 @@ def uploaded_file(filename):
         flash("파일을 찾을 수 없습니다.", "danger")
         return redirect(url_for("lecture"))
 
-
-# ✅ 강의자료 게시 확정 (confirm)
-@app.route("/confirm_lecture/<int:index>", methods=["POST"])
-def confirm_lecture(index):
-    """게시 확정 버튼 처리"""
-    if "email" not in session:
-        return redirect(url_for("login"))
-
+# ✅ 강의자료 게시 확인
+@app.route("/confirm_lecture/<int:lec_index>", methods=["POST"])
+def confirm_lecture(lec_index):
+    """게시 확인(confirmed=True) 처리"""
     df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
 
-    if 0 <= index < len(df):
-        df.at[index, "confirmed"] = "yes"
+    if lec_index < len(df):
+        df.loc[lec_index, "confirmed"] = True
         save_csv(DATA_LECTURE, df)
-        flash("📢 해당 자료가 게시 확정되었습니다.", "success")
+        flash("강의자료가 게시되었습니다 ✅", "success")
 
     return redirect(url_for("upload_lecture"))
-
-
-     
-
-
-
-
-
-
 
 
 # ❌ 강의자료 삭제
@@ -248,28 +205,18 @@ def delete_lecture(lec_index):
 
 
 # ───────────── 학습 사이트 (강의자료 + Q&A) ─────────────
-@app.route("/lecture")
+@app.route("/lecture", methods=["GET", "POST"])
 def lecture():
-    df = load_csv(DATA_LECTURE, ["title","content","files","links","date","confirmed"])
-    df = df.fillna('')  # ✅ NaN 방지 추가
-    lectures = df[df["confirmed"] == "yes"].to_dict("records")
-    return render_template("lecture.html", lectures=lectures)
+    email = session.get("email")
+    if not email:
+        flash("로그인이 필요합니다.", "warning")
+        return redirect(url_for("login"))
 
-
-    # ✅ 안전한 CSV 로드
-    df_lecture = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
+    df_lecture = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date"])
     df_questions = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
     df_comments = load_csv(DATA_COMMENTS, ["question_id", "comment", "email"])
 
-    # ✅ confirmed 컬럼 보정 (없거나 NaN일 경우 'no'로 설정)
-    if "confirmed" not in df_lecture.columns:
-        df_lecture["confirmed"] = "no"
-    df_lecture["confirmed"] = df_lecture["confirmed"].fillna("no")
-
-    # ✅ "yes"로 표시된 게시 확정 자료만 표시
-    df_lecture = df_lecture[df_lecture["confirmed"].astype(str).str.lower() == "yes"]
-
-    # ✅ 15일 이내 자료만 유지 (날짜 오류 발생시 무시)
+    # 15일 지난 강의자료 자동삭제
     today = datetime.now()
     valid_rows = []
     for _, row in df_lecture.iterrows():
@@ -277,14 +224,12 @@ def lecture():
             d = datetime.strptime(str(row["date"]), "%Y-%m-%d %H:%M")
             if (today - d).days <= 15:
                 valid_rows.append(row)
-        except Exception as e:
-            print(f"[Date Parse Error] {e}")
+        except:
             continue
-
-    df_lecture = pd.DataFrame(valid_rows, columns=["title", "content", "files", "links", "date", "confirmed"])
+    df_lecture = pd.DataFrame(valid_rows, columns=["title", "content", "files", "links", "date"])
     save_csv(DATA_LECTURE, df_lecture)
 
-    # ✅ Q&A 질문 등록
+    # 질문 등록
     if request.method == "POST" and "title" in request.form:
         new_id = len(df_questions) + 1
         new_q = {
@@ -306,7 +251,6 @@ def lecture():
         comments=df_comments.to_dict("records"),
         user_email=email,
     )
-
 
 # 💬 댓글 등록
 @app.route("/add_comment/<int:question_id>", methods=["POST"])
