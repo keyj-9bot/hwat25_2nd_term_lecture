@@ -119,62 +119,54 @@ def logout():
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
     df = load_csv(DATA_LECTURE, ["title","content","files","links","date","confirmed"])
-    df = df.fillna('')  # ✅ NaN 방지 추가
-    return render_template("upload_lecture.html", lectures=df.to_dict("records"))
+    df = df.fillna('')  # ✅ NaN 방지
 
-
-    df = load_csv(DATA_LECTURE, ["title", "content", "files", "links", "date", "confirmed"])
-    if "confirmed" not in df.columns:
-        df["confirmed"] = "no"
-    df["confirmed"] = df["confirmed"].fillna("no")
-
-    # ✅ 업로드 처리
     if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        content = request.form.get("content", "").strip()
+        try:
+            title = request.form.get("title", "").strip()
+            content = request.form.get("content", "").strip()
+            date = datetime.now().strftime("%Y-%m-%d")
+            confirmed = "no"
 
-        # 📂 파일 처리
-        uploaded_files = request.files.getlist("files")
-        file_names = []
-        for file in uploaded_files:
-            if file and file.filename:
-                safe_name = secure_filename(file.filename)
-                file.save(os.path.join(UPLOAD_FOLDER, safe_name))
-                file_names.append(safe_name)
-        files_str = ";".join(file_names)
+            # 🔗 링크 처리
+            link_values = [v.strip() for k, v in request.form.items() if "link" in k and v.strip()]
+            links = ";".join(link_values)
 
-        # 🔗 링크 처리
-        links = [v for k, v in request.form.items() if k.startswith("link") and v.strip()]
-        links_str = ";".join(links)
+            # 📂 파일 처리
+            file_names = []
+            if "files" in request.files:
+                files = request.files.getlist("files")
+                for f in files:
+                    if f and f.filename:
+                        filename = secure_filename(f.filename)
+                        save_path = os.path.join(UPLOAD_FOLDER, filename)
+                        f.save(save_path)
+                        file_names.append(filename)
+            files_str = ";".join(file_names)
 
-        # ✅ 새 행 추가 (기본 confirmed=no)
-        new_row = {
-            "title": title,
-            "content": content,
-            "files": files_str,
-            "links": links_str,
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "confirmed": "no"
-        }
+            # 🧩 새 행 추가
+            new_row = {
+                "title": title,
+                "content": content,
+                "files": files_str,
+                "links": links,
+                "date": date,
+                "confirmed": confirmed
+            }
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            df.to_csv(DATA_LECTURE, index=False, encoding="utf-8-sig")
 
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        save_csv(DATA_LECTURE, df)
-        flash("강의자료가 업로드되었습니다. '게시 확정'을 눌러야 학습사이트에 표시됩니다.", "success")
-        return redirect(url_for("upload_lecture"))
+            flash("자료가 성공적으로 업로드되었습니다.", "success")
+            return redirect(url_for("upload_lecture"))
 
-    # 🔹 NaN → 문자열 변환 (float object 방지)
-    safe_lectures = []
-    for _, row in df.iterrows():
-        safe_lectures.append({
-            "title": str(row.get("title", "")),
-            "content": str(row.get("content", "")),
-            "files": str(row.get("files", "")),
-            "links": str(row.get("links", "")),
-            "date": str(row.get("date", "")),
-            "confirmed": str(row.get("confirmed", "no")),
-        })
+        except Exception as e:
+            print(f"[UPLOAD ERROR] {e}")  # ✅ Render 로그 확인용
+            flash("업로드 중 오류가 발생했습니다.", "danger")
+            return redirect(url_for("upload_lecture"))
 
-    return render_template("upload_lecture.html", lectures=safe_lectures)
+    # 📋 GET (페이지 로딩 시)
+    df = df.fillna('')
+    return render_template("upload_lecture.html", lectures=df.to_dict("records"))
 
 
 
