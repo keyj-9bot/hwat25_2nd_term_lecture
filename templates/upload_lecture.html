@@ -94,21 +94,32 @@
         <input type="text" name="title" class="form-control mb-1" value="{{ lec.title }}">
         <textarea name="content" class="form-control mb-1">{{ lec.content }}</textarea>
 
-        <!-- 현재 파일 -->
+        <!-- ✅ 현재 파일 목록 표시 -->
         {% if lec.files %}
-          <p class="mb-1">현재 파일:
+          <label class="form-label fw-bold text-secondary">📎 현재 등록된 파일</label>
+          <div id="currentFiles{{ loop.index0 }}">
             {% for f in (lec.files or '').split(';') if f.strip() %}
-              <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>
+              <div class="d-flex align-items-center mb-1">
+                <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank" class="me-2">{{ f.strip() }}</a>
+                <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" onclick="removeExistingFile('{{ loop.index0 }}', '{{ f.strip() }}')">🗑️</button>
+              </div>
             {% endfor %}
-          </p>
+          </div>
         {% endif %}
 
-        <!-- 📎 새 파일 업로드 (교체 선택 시만 적용) -->
-        <label class="form-label mt-1 fw-bold text-secondary">📎 새 파일 업로드 (선택 시 기존 파일 교체)</label>
-        <input type="file" name="new_file" class="form-control mb-2">
+        <!-- ✅ 새 파일 추가 영역 -->
+        <label class="form-label mt-2 fw-bold text-secondary">📂 새 파일 추가</label>
+        <div id="newFiles{{ loop.index0 }}">
+          <input type="file" name="new_files" class="form-control mb-1">
+        </div>
+        <div class="d-flex mb-2">
+          <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addNewFile('{{ loop.index0 }}')">＋ 파일 추가</button>
+          <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeNewFile('{{ loop.index0 }}')">－ 파일 삭제</button>
+        </div>
 
+        <input type="hidden" name="delete_files" id="deleteFiles{{ loop.index0 }}" value="">
         <input type="text" name="links" class="form-control mb-1" value="{{ lec.links }}">
-        <button class="btn btn-sm btn-success w-100">💾 저장</button>
+        <button class="btn btn-sm btn-success w-100 mt-1">💾 저장</button>
       </form>
     </div>
   </div>
@@ -137,11 +148,30 @@ function removeLinkInput() {
   const div = document.getElementById('linkInputs');
   if (div.children.length > 1) div.removeChild(div.lastChild);
 }
+
+/* 수정폼 내 파일 추가/삭제 기능 */
+function addNewFile(idx) {
+  const div = document.createElement('div');
+  div.innerHTML = '<input type="file" name="new_files" class="form-control mb-1">';
+  document.getElementById(`newFiles${idx}`).appendChild(div);
+}
+function removeNewFile(idx) {
+  const div = document.getElementById(`newFiles${idx}`);
+  if (div.children.length > 1) div.removeChild(div.lastChild);
+}
+function removeExistingFile(idx, filename) {
+  const container = document.getElementById(`currentFiles${idx}`);
+  for (const child of container.children) {
+    if (child.innerText.includes(filename)) {
+      container.removeChild(child);
+      break;
+    }
+  }
+  const input = document.getElementById(`deleteFiles${idx}`);
+  let current = input.value ? input.value.split(';') : [];
+  current.push(filename);
+  input.value = current.join(';');
+}
 </script>
 
 {% endblock %}
-
-
-
-
-

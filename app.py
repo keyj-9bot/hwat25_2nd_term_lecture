@@ -215,12 +215,12 @@ def upload_lecture():
 def edit_lecture(index):
     df = load_csv(DATA_UPLOADS, ["title", "content", "files", "links", "date", "confirmed"])
     if 0 <= index < len(df):
-        lec = df.iloc[index]
+        lec = df.loc[index].copy()  # ✅ .iloc 대신 .loc + copy() 사용
         title = request.form.get("title", lec["title"])
         content = request.form.get("content", lec["content"])
         links = request.form.get("links", lec["links"])
 
-        # 🔹 기존 파일 삭제 (선택 시)
+        # 🔹 기존 파일 전체 삭제
         if request.form.get("delete_file") == "1" and lec.get("files"):
             old_files = str(lec["files"]).split(";")
             for f in old_files:
@@ -229,7 +229,20 @@ def edit_lecture(index):
                     os.remove(old_path)
             lec["files"] = ""
 
-        # 🔹 새 파일 업로드 (선택 시 교체)
+        # 🔹 선택된 파일 일부 삭제
+        delete_list = request.form.get("delete_files", "")
+        if delete_list:
+            for fname in delete_list.split(";"):
+                path = os.path.join(UPLOAD_FOLDER, fname.strip())
+                if os.path.exists(path):
+                    os.remove(path)
+            remaining = [
+                f for f in str(lec["files"]).split(";")
+                if f.strip() and f.strip() not in delete_list.split(";")
+            ]
+            lec["files"] = ";".join(remaining)
+
+        # 🔹 새 파일 업로드 (단일 교체용)
         if "new_file" in request.files:
             new_file = request.files["new_file"]
             if new_file and new_file.filename:
@@ -237,16 +250,32 @@ def edit_lecture(index):
                 new_file.save(os.path.join(UPLOAD_FOLDER, fname))
                 lec["files"] = fname
 
-        df.at[index, "title"] = title
-        df.at[index, "content"] = content
-        df.at[index, "links"] = links
-        df.at[index, "files"] = lec["files"]
+        # 🔹 새 파일 추가 (복수 추가용)
+        if "new_files" in request.files:
+            new_files = request.files.getlist("new_files")
+            added = []
+            for nf in new_files:
+                if nf and nf.filename:
+                    safe_name = secure_filename(nf.filename)
+                    nf.save(os.path.join(UPLOAD_FOLDER, safe_name))
+                    added.append(safe_name)
+            if added:
+                combined = str(lec["files"]).split(";") + added
+                lec["files"] = ";".join(f for f in combined if f.strip())
+
+        # 🔹 DataFrame 반영
+        df.loc[index, "title"] = title
+        df.loc[index, "content"] = content
+        df.loc[index, "links"] = links
+        df.loc[index, "files"] = lec["files"]
         save_csv(DATA_UPLOADS, df)
 
         flash("📘 강의자료가 수정되었습니다.", "success")
         print(f"[EDIT] '{title}' 수정 완료 / 파일: {lec['files']}")
 
     return redirect(url_for("upload_lecture"))
+
+
 
 
 @app.route("/uploads/<path:filename>")
