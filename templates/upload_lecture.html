@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+  /* 🔹 전체 폰트 크기 축소 */
+  body, .form-control, .btn, .nav-link, label, input, textarea, h3, h4, h5, p, small {
+    font-size: 0.9rem !important;
+  }
+</style>
+
 <h3 class="fw-bold mb-3">📘 강의자료 업로드</h3>
 
 <form method="POST" enctype="multipart/form-data">
@@ -60,12 +67,10 @@
     <div class="mt-2">
       {% if lec.title not in post_titles %}
         {% if lec.confirmed|string != 'yes' %}
-          <!-- ✅ 최초 게시 -->
           <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
             <button class="btn btn-sm btn-outline-success">✅ 게시 확정</button>
           </form>
         {% else %}
-          <!-- 🔁 학습사이트에서 삭제된 자료라면 재게시 -->
           <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
             <button class="btn btn-sm btn-outline-primary">🔁 재게시</button>
           </form>
@@ -74,9 +79,22 @@
         <span class="badge bg-success">게시 완료</span>
       {% endif %}
 
-      <!-- 🗑️ 삭제 버튼 -->
       <form action="{{ url_for('delete_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
         <button class="btn btn-sm btn-outline-danger">🗑️ 삭제</button>
+      </form>
+
+      <!-- ✏️ 수정 기능 추가 -->
+      <button class="btn btn-sm btn-outline-warning" type="button" data-bs-toggle="collapse" data-bs-target="#edit{{ loop.index0 }}">📝 수정</button>
+    </div>
+
+    <!-- ✏️ 수정 폼 (토글 방식) -->
+    <div id="edit{{ loop.index0 }}" class="collapse mt-2">
+      <form action="{{ url_for('edit_lecture', index=loop.index0) }}" method="POST" enctype="multipart/form-data" class="border rounded p-2 bg-white">
+        <input type="text" name="title" class="form-control mb-1" value="{{ lec.title }}">
+        <textarea name="content" class="form-control mb-1">{{ lec.content }}</textarea>
+        <input type="file" name="files" multiple class="form-control mb-1">
+        <input type="text" name="links" class="form-control mb-1" value="{{ lec.links }}">
+        <button class="btn btn-sm btn-success w-100">💾 저장</button>
       </form>
     </div>
   </div>
@@ -111,5 +129,6 @@ function removeLinkInput() {
 </script>
 
 {% endblock %}
+
 
 
