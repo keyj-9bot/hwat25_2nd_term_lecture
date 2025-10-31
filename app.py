@@ -369,6 +369,38 @@ def delete_comment(q_id, c_idx):
     return redirect(url_for("lecture"))
 
 
+
+# ───────────── 데이터 확인용 (교수 전용) ─────────────
+@app.route("/check_data")
+def check_data():
+    email = session.get("email", "")
+    if email != get_professor_email():
+        flash("접근 권한이 없습니다. 교수님 계정으로 로그인하세요.", "danger")
+        return redirect(url_for("home"))
+
+    data_dir = "/data"
+    file_info = []
+
+    for root, _, files in os.walk(data_dir):
+        for f in files:
+            path = os.path.join(root, f)
+            try:
+                size_kb = round(os.path.getsize(path) / 1024, 2)
+                mtime = datetime.fromtimestamp(os.path.getmtime(path)).strftime("%Y-%m-%d %H:%M:%S")
+                rel_path = os.path.relpath(path, data_dir)
+                file_info.append({"name": rel_path, "size": size_kb, "mtime": mtime})
+            except:
+                continue
+
+    # 크기순 정렬
+    file_info = sorted(file_info, key=lambda x: x["name"])
+
+    return render_template("check_data.html", files=file_info)
+
+
+
+
+
 # ───────────── Health Check ─────────────
 @app.route("/health")
 def health():

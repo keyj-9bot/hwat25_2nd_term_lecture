@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-3">📂 /data 폴더 현황</h3>
+<p class="text-muted">현재 서버의 영구저장소 상태입니다 (CSV 및 업로드 파일 포함)</p>
+
+<table class="table table-striped table-hover">
+  <thead class="table-secondary">
+    <tr>
+      <th>파일명</th>
+      <th>크기 (KB)</th>
+      <th>최근 수정일</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for f in files %}
+      <tr>
+        <td>{{ f.name }}</td>
+        <td>{{ f.size }}</td>
+        <td>{{ f.mtime }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if not files %}
+<p class="text-muted">📭 현재 /data 폴더에 파일이 없습니다.</p>
+{% endif %}
+
+{% endblock %}
