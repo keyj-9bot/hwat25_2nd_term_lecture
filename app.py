@@ -266,9 +266,8 @@ def confirm_lecture(index):
         title = str(row["title"]).strip()
         date = str(row["date"]).strip()
 
-        # ✅ 게시 또는 재게시
-        row["confirmed"] = "yes"
-        df_uploads.at[index, "confirmed"] = "yes"
+        # ✅ 게시 또는 재게시 (dtype 일관성 유지)
+        df_uploads.at[index, "confirmed"] = str("yes")
 
         # 중복 게시 방지
         if not ((df_posts["title"] == title) & (df_posts["date"] == date)).any():
@@ -280,6 +279,7 @@ def confirm_lecture(index):
         print(f"[CONFIRM] '{title}' → 게시 완료 (업로드 목록 반영)")
 
     return redirect(url_for("upload_lecture"))
+
 
 
 
