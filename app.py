@@ -22,16 +22,17 @@ app.config.update(
 )
 
 # ───────────── 설정 ─────────────
-UPLOAD_FOLDER = "/data/uploads"
-DATA_LECTURE = "/data/lecture_data.csv"
-DATA_QUESTIONS = "/data/questions.csv"
-DATA_COMMENTS = "/data/comments.csv"
-DATA_UPLOADS = "/data/uploads_data.csv"     # ✅ 업로드 전용 CSV
-DATA_POSTS = "/data/posts_data.csv"         # ✅ 학습사이트 게시 전용 CSV
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+DATA_LECTURE = "lecture_data.csv"
+DATA_QUESTIONS = "questions.csv"
+DATA_COMMENTS = "comments.csv"
+DATA_UPLOADS = "uploads_data.csv"     # ✅ 업로드 전용 CSV
+DATA_POSTS = "posts_data.csv"         # ✅ 학습사이트 게시 전용 CSV
 ALLOWED_EMAILS = "allowed_emails.txt"
 
 # 업로드 폴더 생성
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 
 # ───────────── CSV 로드/저장 ─────────────
@@ -357,6 +358,60 @@ def delete_question(q_id):
             flash("질문이 삭제되었습니다.", "info")
     return redirect(url_for("lecture"))
 
+
+# ───────────── Q&A 댓글 등록/수정/삭제 ─────────────
+@app.route("/add_comment/<int:q_id>", methods=["POST"])
+def add_comment(q_id):
+    email = session.get("email", "")
+    if not email:
+        flash("로그인이 필요합니다.", "warning")
+        return redirect(url_for("login"))
+
+    comment = request.form.get("comment", "").strip()
+    if not comment:
+        flash("댓글 내용을 입력해주세요.", "warning")
+        return redirect(url_for("lecture"))
+
+    df = load_csv(DATA_COMMENTS, ["question_id", "comment", "email", "date"])
+    new_row = {
+        "question_id": q_id,
+        "comment": comment,
+        "email": email,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    save_csv(DATA_COMMENTS, df)
+    flash("댓글이 등록되었습니다.", "success")
+    return redirect(url_for("lecture"))
+
+
+@app.route("/edit_comment/<int:q_id>/<int:c_idx>", methods=["POST"])
+def edit_comment(q_id, c_idx):
+    email = session.get("email", "")
+    df = load_csv(DATA_COMMENTS, ["question_id", "comment", "email", "date"])
+    if 0 <= c_idx < len(df):
+        row = df.iloc[c_idx]
+        if row["email"] == email or email == get_professor_email():
+            new_comment = request.form.get("edited_comment", "").strip()
+            if new_comment:
+                df.at[c_idx, "comment"] = new_comment
+                df.at[c_idx, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+                save_csv(DATA_COMMENTS, df)
+                flash("댓글이 수정되었습니다.", "info")
+    return redirect(url_for("lecture"))
+
+
+@app.route("/delete_comment/<int:q_id>/<int:c_idx>", methods=["POST"])
+def delete_comment(q_id, c_idx):
+    email = session.get("email", "")
+    df = load_csv(DATA_COMMENTS, ["question_id", "comment", "email", "date"])
+    if 0 <= c_idx < len(df):
+        row = df.iloc[c_idx]
+        if row["email"] == email or email == get_professor_email():
+            df = df.drop(index=c_idx).reset_index(drop=True)
+            save_csv(DATA_COMMENTS, df)
+            flash("댓글이 삭제되었습니다.", "info")
+    return redirect(url_for("lecture"))
 
 
 
