@@ -297,12 +297,66 @@ def delete_confirmed(index):
     return redirect(url_for("lecture"))
 
 
-# ───────────── Q&A 질문 등록 (임시 placeholder) ─────────────
+# ───────────── Q&A 질문 등록/수정/삭제 ─────────────
 @app.route("/add_question", methods=["POST"])
 def add_question():
-    """학습페이지 Q&A용 임시 경로 (지금은 기능 없이 리다이렉트만 수행)"""
-    flash("질문 등록 기능은 준비 중입니다.", "info")
+    email = session.get("email", "")
+    if not email:
+        flash("로그인이 필요합니다.", "warning")
+        return redirect(url_for("login"))
+
+    title = request.form.get("title", "").strip()
+    content = request.form.get("content", "").strip()
+    if not title or not content:
+        flash("제목과 내용을 모두 입력해주세요.", "warning")
+        return redirect(url_for("lecture"))
+
+    df = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
+    new_id = len(df) + 1
+    new_q = {
+        "id": new_id,
+        "title": title,
+        "content": content,
+        "email": email,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    df = pd.concat([df, pd.DataFrame([new_q])], ignore_index=True)
+    save_csv(DATA_QUESTIONS, df)
+    flash("질문이 등록되었습니다.", "success")
     return redirect(url_for("lecture"))
+
+
+@app.route("/edit_question/<int:q_id>", methods=["POST"])
+def edit_question(q_id):
+    email = session.get("email", "")
+    df = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
+    if 0 <= q_id - 1 < len(df):
+        row = df.iloc[q_id - 1]
+        if row["email"] == email or email == get_professor_email():
+            new_title = request.form.get("edited_title", "").strip()
+            new_content = request.form.get("edited_content", "").strip()
+            if new_title:
+                df.at[q_id - 1, "title"] = new_title
+            if new_content:
+                df.at[q_id - 1, "content"] = new_content
+            df.at[q_id - 1, "date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+            save_csv(DATA_QUESTIONS, df)
+            flash("질문이 수정되었습니다.", "info")
+    return redirect(url_for("lecture"))
+
+
+@app.route("/delete_question/<int:q_id>", methods=["POST"])
+def delete_question(q_id):
+    email = session.get("email", "")
+    df = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
+    if 0 <= q_id - 1 < len(df):
+        row = df.iloc[q_id - 1]
+        if row["email"] == email or email == get_professor_email():
+            df = df.drop(index=q_id - 1).reset_index(drop=True)
+            save_csv(DATA_QUESTIONS, df)
+            flash("질문이 삭제되었습니다.", "info")
+    return redirect(url_for("lecture"))
+
 
 
 
