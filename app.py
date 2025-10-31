@@ -263,20 +263,24 @@ def confirm_lecture(index):
 
     if 0 <= index < len(df_uploads):
         row = df_uploads.iloc[index]
-        row["confirmed"] = "yes"
+        title = str(row["title"]).strip()
+        date = str(row["date"]).strip()
 
-        # 게시물 중복 방지 후 추가
-        exists = (df_posts["title"] == row["title"]) & (df_posts["date"] == row["date"])
-        if not exists.any():
+        # ✅ 게시 또는 재게시
+        row["confirmed"] = "yes"
+        df_uploads.at[index, "confirmed"] = "yes"
+
+        # 중복 게시 방지
+        if not ((df_posts["title"] == title) & (df_posts["date"] == date)).any():
             df_posts = pd.concat([df_posts, pd.DataFrame([row])], ignore_index=True)
             save_csv(DATA_POSTS, df_posts)
 
-        # 업로드 목록에도 게시 완료 상태 반영
-        df_uploads.at[index, "confirmed"] = "yes"
         save_csv(DATA_UPLOADS, df_uploads)
-
         flash("📢 학습사이트에 게시되었습니다.", "success")
+        print(f"[CONFIRM] '{title}' → 게시 완료 (업로드 목록 반영)")
+
     return redirect(url_for("upload_lecture"))
+
 
 
 
@@ -308,20 +312,22 @@ def delete_confirmed(index):
         title = str(row["title"]).strip()
         date = str(row["date"]).strip()
 
-        # 게시자료 삭제
+        # 🔹 학습사이트 게시자료 삭제
         df_posts = df_posts.drop(index=index).reset_index(drop=True)
         save_csv(DATA_POSTS, df_posts)
-        flash("게시된 자료가 삭제되었습니다.", "info")
+        flash("게시된 자료가 학습사이트에서 삭제되었습니다.", "info")
 
-        # ✅ 업로드 목록 상태 변경 → 재게시 표시
+        # 🔹 업로드 목록 상태 변경 → 재게시
         for i in range(len(df_uploads)):
             if str(df_uploads.at[i, "title"]).strip() == title and str(df_uploads.at[i, "date"]).strip() == date:
-                df_uploads.at[i, "confirmed"] = "no"
+                df_uploads.at[i, "confirmed"] = "retry"
+                print(f"[DELETE CONFIRMED] '{title}' 삭제됨 → 업로드 목록 상태 'retry'(재게시)로 변경 완료")
                 break
 
         save_csv(DATA_UPLOADS, df_uploads)
 
     return redirect(url_for("lecture"))
+
 
 
 
