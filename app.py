@@ -86,15 +86,21 @@ def lecture():
     df_posts = df_posts.fillna('')
     today = datetime.now()
 
-    # ✅ 15일 경과 자료 자동 삭제
+    # ✅ 15일 경과 자료 자동 삭제 (오류 방지용 안전 필터 포함)
     recent_posts = []
     for _, row in df_posts.iterrows():
         try:
-            d = datetime.strptime(str(row["date"]).split()[0], "%Y-%m-%d")
+            date_str = str(row.get("date", "")).split()[0]
+            if not date_str or date_str.lower() == "nan":
+                continue
+            d = datetime.strptime(date_str, "%Y-%m-%d")
             if (today - d).days <= 15:
                 recent_posts.append(row)
-        except:
+        except Exception as e:
+            print(f"[LECTURE ERROR] {e} / row={row}")
             continue
+
+    # ✅ 반복문이 끝난 후 데이터프레임 재생성 및 저장
     df_posts = pd.DataFrame(recent_posts, columns=["title", "content", "files", "links", "date", "confirmed"])
     save_csv(DATA_POSTS, df_posts)
     lectures = df_posts.to_dict("records")
