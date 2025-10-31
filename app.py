@@ -297,6 +297,15 @@ def delete_confirmed(index):
     return redirect(url_for("lecture"))
 
 
+# ───────────── Q&A 질문 등록 (임시 placeholder) ─────────────
+@app.route("/add_question", methods=["POST"])
+def add_question():
+    """학습페이지 Q&A용 임시 경로 (지금은 기능 없이 리다이렉트만 수행)"""
+    flash("질문 등록 기능은 준비 중입니다.", "info")
+    return redirect(url_for("lecture"))
+
+
+
 # ───────────── 데이터 확인용 (교수 전용) ─────────────
 @app.route("/check_data")
 def check_data():
