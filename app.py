@@ -8,8 +8,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import pandas as pd
 import os
 from datetime import datetime, timedelta
-from werkzeug.utils import secure_filename
-import chardet
 
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
@@ -30,22 +28,23 @@ DATA_UPLOADS = "uploads_data.csv"     # ✅ 업로드 전용 CSV
 DATA_POSTS = "posts_data.csv"         # ✅ 학습사이트 게시 전용 CSV
 ALLOWED_EMAILS = "allowed_emails.txt"
 
-# 업로드 폴더 생성
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path, cols):
-    """CSV 안전 로드 (자동 인코딩 감지)"""
+    """CSV 안전 로드 (헤더 오류 시 자동 초기화)"""
     if os.path.exists(path):
         try:
-            with open(path, "rb") as f:
-                raw = f.read()
-                enc = chardet.detect(raw)["encoding"] or "utf-8"
-            return pd.read_csv(path, encoding=enc)
+            df = pd.read_csv(path)
+            if df.empty or list(df.columns) != cols:
+                return pd.DataFrame(columns=cols)
+            return df
         except Exception as e:
             print(f"[CSV Load Error] {e}")
-    return pd.DataFrame(columns=cols)
+            return pd.DataFrame(columns=cols)
+    else:
+        return pd.DataFrame(columns=cols)
 
 
 def save_csv(path, df):
@@ -65,7 +64,7 @@ def get_professor_email():
     return None
 
 
-# ───────────── 템플릿 공용 변수 주입 ─────────────
+# ───────────── 템플릿 변수 주입 ─────────────
 @app.context_processor
 def inject_is_professor():
     email = session.get("email")
@@ -78,15 +77,13 @@ def index():
     return redirect(url_for("login"))
 
 
-# ✅ lecture 라우트를 login보다 위로 이동 (BuildError 방지)
 @app.route("/lecture")
 def lecture():
-    # ✅ 강의자료 불러오기
     df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
     df_posts = df_posts.fillna('')
     today = datetime.now()
 
-    # ✅ 15일 경과 자료 자동 삭제 (오류 방지용 안전 필터 포함)
+    # ✅ 15일 지난 자료 자동 제거
     recent_posts = []
     for _, row in df_posts.iterrows():
         try:
@@ -100,19 +97,19 @@ def lecture():
             print(f"[LECTURE ERROR] {e} / row={row}")
             continue
 
-    # ✅ 반복문이 끝난 후 데이터프레임 재생성 및 저장
     df_posts = pd.DataFrame(recent_posts, columns=["title", "content", "files", "links", "date", "confirmed"])
     save_csv(DATA_POSTS, df_posts)
     lectures = df_posts.to_dict("records")
 
-    # ✅ 질문 및 댓글 불러오기
     df_questions = load_csv(DATA_QUESTIONS, ["id", "title", "content", "email", "date"])
     df_comments = load_csv(DATA_COMMENTS, ["question_id", "comment", "email", "date"])
 
-    questions = df_questions.to_dict("records")
-    comments = df_comments.to_dict("records")
-
-    return render_template("lecture.html", lectures=lectures, questions=questions, comments=comments)
+    return render_template(
+        "lecture.html",
+        lectures=lectures,
+        questions=df_questions.to_dict("records"),
+        comments=df_comments.to_dict("records"),
+    )
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -135,8 +132,6 @@ def login():
             return redirect(url_for("home"))
         else:
             flash("등록되지 않은 이메일입니다.", "danger")
-            return redirect(url_for("login"))
-
     return render_template("login.html")
 
 
@@ -156,11 +151,10 @@ def logout():
     return redirect(url_for("login"))
 
 
-# ───────────── 교수용 업로드 페이지 ─────────────
+# ───────────── 교수용 업로드 ─────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
-    df = load_csv(DATA_UPLOADS, ["title", "content", "files", "links", "date", "confirmed"])
-    df = df.fillna('')
+    df = load_csv(DATA_UPLOADS, ["title", "content", "files", "links", "date", "confirmed"]).fillna('')
 
     if request.method == "POST":
         try:
@@ -169,33 +163,27 @@ def upload_lecture():
             date = datetime.now().strftime("%Y-%m-%d")
             confirmed = "no"
 
-            # 🔗 링크 처리
+            # 🔗 링크
             link_values = [v.strip() for k, v in request.form.items() if "link" in k and v.strip()]
             links = ";".join(link_values)
 
-            # 📂 파일 처리
+            # 📂 파일
             file_names = []
             if "files" in request.files:
-                files = request.files.getlist("files")
-                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-                for f in files:
+                for f in request.files.getlist("files"):
                     if f and f.filename:
-                        orig_name = f.filename
-                        safe_name = orig_name.replace(" ", "_").replace("/", "").replace("\\", "")
-                        save_path = os.path.join(UPLOAD_FOLDER, safe_name)
-                        f.save(save_path)
-                        file_names.append(safe_name)
+                        fname = f.filename.replace(" ", "_").replace("/", "").replace("\\", "")
+                        f.save(os.path.join(UPLOAD_FOLDER, fname))
+                        file_names.append(fname)
             files_str = ";".join(file_names)
 
-            # 🧩 새 행 추가
             new_row = {
                 "title": title,
                 "content": content,
                 "files": files_str,
                 "links": links,
                 "date": date,
-                "confirmed": confirmed
+                "confirmed": confirmed,
             }
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             save_csv(DATA_UPLOADS, df)
@@ -206,76 +194,56 @@ def upload_lecture():
         return redirect(url_for("upload_lecture"))
 
     df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
-    post_titles = df_posts["title"].dropna().tolist()
-
-    return render_template("upload_lecture.html", lectures=df.to_dict("records"), post_titles=post_titles)
+    return render_template("upload_lecture.html", lectures=df.to_dict("records"), post_titles=df_posts["title"].tolist())
 
 
+# ───────────── 강의자료 수정 ─────────────
 @app.route("/edit_lecture/<int:index>", methods=["POST"])
 def edit_lecture(index):
     df = load_csv(DATA_UPLOADS, ["title", "content", "files", "links", "date", "confirmed"])
     if 0 <= index < len(df):
-        lec = df.loc[index].copy()  # ✅ .iloc 대신 .loc + copy() 사용
+        lec = df.loc[index].copy()
         title = request.form.get("title", lec["title"])
         content = request.form.get("content", lec["content"])
         links = request.form.get("links", lec["links"])
 
-        # 🔹 기존 파일 전체 삭제
+        # 🔹 전체 파일 삭제
         if request.form.get("delete_file") == "1" and lec.get("files"):
-            old_files = str(lec["files"]).split(";")
-            for f in old_files:
-                old_path = os.path.join(UPLOAD_FOLDER, f)
-                if os.path.exists(old_path):
-                    os.remove(old_path)
+            for f in str(lec["files"]).split(";"):
+                path = os.path.join(UPLOAD_FOLDER, f)
+                if os.path.exists(path):
+                    os.remove(path)
             lec["files"] = ""
 
-        # 🔹 선택된 파일 일부 삭제
+        # 🔹 일부 파일 삭제
         delete_list = request.form.get("delete_files", "")
         if delete_list:
             for fname in delete_list.split(";"):
                 path = os.path.join(UPLOAD_FOLDER, fname.strip())
                 if os.path.exists(path):
                     os.remove(path)
-            remaining = [
-                f for f in str(lec["files"]).split(";")
-                if f.strip() and f.strip() not in delete_list.split(";")
-            ]
+            remaining = [f for f in str(lec["files"]).split(";") if f.strip() and f.strip() not in delete_list.split(";")]
             lec["files"] = ";".join(remaining)
 
-        # 🔹 새 파일 업로드 (단일 교체용)
-        if "new_file" in request.files:
-            new_file = request.files["new_file"]
-            if new_file and new_file.filename:
-                fname = secure_filename(new_file.filename)
-                new_file.save(os.path.join(UPLOAD_FOLDER, fname))
-                lec["files"] = fname
-
-        # 🔹 새 파일 추가 (복수 추가용)
+        # 🔹 새 파일 추가 (복수 가능, 한글 유지)
         if "new_files" in request.files:
             new_files = request.files.getlist("new_files")
             added = []
             for nf in new_files:
                 if nf and nf.filename:
-                    safe_name = secure_filename(nf.filename)
-                    nf.save(os.path.join(UPLOAD_FOLDER, safe_name))
-                    added.append(safe_name)
+                    fname = nf.filename.replace(" ", "_").replace("/", "").replace("\\", "")
+                    nf.save(os.path.join(UPLOAD_FOLDER, fname))
+                    added.append(fname)
             if added:
                 combined = str(lec["files"]).split(";") + added
                 lec["files"] = ";".join(f for f in combined if f.strip())
 
-        # 🔹 DataFrame 반영
-        df.loc[index, "title"] = title
-        df.loc[index, "content"] = content
-        df.loc[index, "links"] = links
-        df.loc[index, "files"] = lec["files"]
+        # 🔹 데이터 반영
+        df.loc[index, ["title", "content", "links", "files"]] = [str(title), str(content), str(links), lec["files"]]
         save_csv(DATA_UPLOADS, df)
-
         flash("📘 강의자료가 수정되었습니다.", "success")
         print(f"[EDIT] '{title}' 수정 완료 / 파일: {lec['files']}")
-
     return redirect(url_for("upload_lecture"))
-
-
 
 
 @app.route("/uploads/<path:filename>")
@@ -302,6 +270,7 @@ def confirm_lecture(index):
         save_csv(DATA_UPLOADS, df_uploads)
         flash("📢 학습사이트에 게시되었습니다.", "success")
     return redirect(url_for("upload_lecture"))
+
 
 
 # 🗑️ 강의자료 삭제
