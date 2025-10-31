@@ -22,14 +22,17 @@ app.config.update(
 )
 
 # ───────────── 설정 ─────────────
-DATA_LECTURE = "lecture_data.csv"
-DATA_QUESTIONS = "questions.csv"
-DATA_COMMENTS = "comments.csv"
-DATA_UPLOADS = "uploads_data.csv"     # ✅ 업로드 전용 CSV
-DATA_POSTS = "posts_data.csv"         # ✅ 학습사이트 게시 전용 CSV
+UPLOAD_FOLDER = "/data/uploads"
+DATA_LECTURE = "/data/lecture_data.csv"
+DATA_QUESTIONS = "/data/questions.csv"
+DATA_COMMENTS = "/data/comments.csv"
+DATA_UPLOADS = "/data/uploads_data.csv"     # ✅ 업로드 전용 CSV
+DATA_POSTS = "/data/posts_data.csv"         # ✅ 학습사이트 게시 전용 CSV
 ALLOWED_EMAILS = "allowed_emails.txt"
-UPLOAD_FOLDER = "uploads"
+
+# 업로드 폴더 생성 (디스크 경로 기준)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path, cols):
