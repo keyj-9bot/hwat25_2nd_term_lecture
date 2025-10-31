@@ -1,159 +1,142 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-4">
+<h3 class="fw-bold mb-3">📘 강의자료 업로드</h3>
 
-  <h3 class="mb-4">📤 강의자료 업로드</h3>
+<!-- 📤 업로드 폼 -->
+<form method="POST" enctype="multipart/form-data">
+  <input type="text" name="title" class="form-control mb-2" placeholder="자료 제목" required>
+  <textarea name="content" class="form-control mb-2" rows="2" placeholder="내용 입력" required></textarea>
 
-  <!-- 업로드 폼 -->
-  <form action="{{ url_for('upload_lecture') }}" method="post" enctype="multipart/form-data" class="mb-5">
-    <div class="mb-3">
-      <label class="form-label">제목</label>
-      <input type="text" name="title" class="form-control" required>
-    </div>
+  <!-- 📂 파일 입력 -->
+  <div id="fileInputs">
+    <input type="file" name="files" class="form-control mb-1">
+  </div>
+  <div class="d-flex mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
+  </div>
 
-    <div class="mb-3">
-      <label class="form-label">내용</label>
-      <textarea name="content" class="form-control" rows="3" required></textarea>
-    </div>
+  <!-- 🔗 링크 입력 -->
+  <div id="linkInputs">
+    <input type="text" name="link1" class="form-control mb-1" placeholder="https:// 관련 사이트 링크">
+  </div>
+  <div class="d-flex mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addLinkInput()">＋ 링크 추가</button>
+    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLinkInput()">－ 링크 삭제</button>
+  </div>
 
-    <!-- 파일 업로드 -->
-    <div class="mb-3">
-      <label class="form-label">파일 선택</label>
-      <div id="fileInputs">
-        <input type="file" name="files" multiple class="form-control mb-2">
-      </div>
-      <button type="button" class="btn btn-sm btn-primary" onclick="addFileField()">+ 파일 추가</button>
-      <button type="button" class="btn btn-sm btn-danger" onclick="removeFileField()">- 파일 삭제</button>
-    </div>
+  <button type="submit" class="btn btn-success w-100 mt-2">📤 업로드</button>
+</form>
 
-    <!-- 링크 입력 -->
-    <div class="mb-3">
-      <label class="form-label">🔗 관련 사이트 링크</label>
-      <div id="linkInputs">
-        <input type="url" name="link1" placeholder="https://example.com" class="form-control mb-2">
-      </div>
-      <button type="button" class="btn btn-sm btn-primary" onclick="addLinkField()">+ 링크 추가</button>
-      <button type="button" class="btn btn-sm btn-danger" onclick="removeLinkField()">- 링크 삭제</button>
-    </div>
+<hr>
 
-    <button type="submit" class="btn btn-success w-100">📤 업로드</button>
-  </form>
+<!-- 📚 업로드된 자료 -->
+<h4 class="fw-bold mt-4">📚 업로드된 자료</h4>
 
-  <!-- 업로드된 자료 목록 -->
-  <h4 class="mt-5">📚 업로드된 자료</h4>
-
+{% if lectures and lectures|length > 0 %}
   {% for lec in lectures %}
-  <div class="card my-3 p-3">
-    <h5>{{ lec.title or "(제목 없음)" }}</h5>
-    <p>{{ lec.content or "(내용 없음)" }}</p>
+  <div class="border rounded p-3 mb-3 bg-light shadow-sm">
+    <h5 class="fw-bold">{{ lec.title or '제목 없음' }}</h5>
+    <p>{{ lec.content or '' }}</p>
 
     {% if lec.files %}
-    <p>📎 파일:
-      {% for f in lec.files.split(';') %}
-        <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
-      {% endfor %}
-    </p>
+      <p>📎 파일:
+        {% for f in (lec.files or '').split(';') if f.strip() %}
+          <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
     {% endif %}
 
     {% if lec.links %}
-    <p>🔗 링크:
-      {% for l in lec.links.split(';') %}
-        <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
-      {% endfor %}
-    </p>
+      <p>🔗 링크:
+        {% for l in (lec.links or '').split(';') if l.strip() %}
+          <a href="{{ l.strip() }}" target="_blank">{{ l.strip() }}</a>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
     {% endif %}
 
-    <p class="text-muted">업로드일: {{ lec.date }}</p>
+    <small class="text-muted">업로드: {{ lec.date or '시간 미기록' }}</small>
 
-    {% if is_professor %}
-    <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="post" class="d-inline">
-      <button type="submit" class="btn btn-sm btn-primary">📢 게시</button>
-    </form>
+    <div class="mt-2">
+      <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
+        <button class="btn btn-sm btn-outline-success">📢 게시</button>
+      </form>
+      <form action="{{ url_for('delete_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
+        <button class="btn btn-sm btn-outline-danger">🗑 삭제</button>
+      </form>
+      <button class="btn btn-sm btn-outline-warning" type="button" data-bs-toggle="collapse" data-bs-target="#edit{{ loop.index0 }}">✏ 수정</button>
+    </div>
 
-    <form action="{{ url_for('delete_lecture', index=loop.index0) }}" method="post" class="d-inline">
-      <button type="submit" class="btn btn-sm btn-danger">🗑 삭제</button>
-    </form>
+    <!-- ✏ 수정 폼 -->
+    <div id="edit{{ loop.index0 }}" class="collapse mt-2">
+      <form action="{{ url_for('edit_lecture', index=loop.index0) }}" method="POST" enctype="multipart/form-data" class="border rounded p-2 bg-white">
+        <input type="text" name="title" class="form-control mb-1" value="{{ lec.title }}">
+        <textarea name="content" class="form-control mb-1">{{ lec.content }}</textarea>
 
-    <!-- 수정 버튼 -->
-    <button class="btn btn-sm btn-warning" type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#editForm{{ loop.index0 }}">✏️ 수정</button>
-
-    <!-- 수정 폼 -->
-    <div class="collapse mt-3" id="editForm{{ loop.index0 }}">
-      <form action="{{ url_for('edit_lecture', index=loop.index0) }}" method="post" enctype="multipart/form-data">
-        <div class="mb-2">
-          <input type="text" name="title" value="{{ lec.title }}" class="form-control">
-        </div>
-        <div class="mb-2">
-          <textarea name="content" class="form-control" rows="3">{{ lec.content }}</textarea>
-        </div>
-
-        <!-- 기존 파일 목록 -->
+        <!-- ✅ 기존 파일 목록 -->
         {% if lec.files %}
-        <p class="mt-2">현재 등록된 파일</p>
-        <div id="currentFiles{{ loop.index0 }}">
-          {% for f in lec.files.split(';') %}
-          <div class="mb-1">
-            <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>
-            <button type="button" class="btn btn-sm btn-outline-danger ms-2"
-                    onclick="removeExistingFile({{ loop.index0 }}, '{{ f.strip() }}')">🗑</button>
+          <label class="form-label fw-bold text-secondary">📎 현재 등록된 파일</label>
+          <div id="currentFiles{{ loop.index0 }}">
+            {% for f in (lec.files or '').split(';') if f.strip() %}
+              <div class="d-flex align-items-center mb-1">
+                <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank" class="me-2">{{ f.strip() }}</a>
+                <!-- 🗑 삭제 버튼 -->
+                <button type="button"
+                        class="btn btn-outline-danger btn-sm py-0 px-1"
+                        onclick="removeExistingFile('{{ loop.index0 }}', '{{ f.strip() }}')">🗑</button>
+              </div>
+            {% endfor %}
           </div>
-          {% endfor %}
-        </div>
         {% endif %}
-        <input type="hidden" id="deleteFiles{{ loop.index0 }}" name="delete_files" value="">
+        <input type="hidden" name="delete_files" id="deleteFiles{{ loop.index0 }}" value="">
 
         <!-- 새 파일 추가 -->
-        <label class="form-label mt-2">새 파일 추가</label>
-        <div class="mb-2">
-          <input type="file" name="new_files" multiple class="form-control mb-2">
-          <button type="button" class="btn btn-sm btn-primary" onclick="addNewFileField()">+ 파일 추가</button>
-          <!-- ❌ '파일 삭제' 버튼 제거 -->
+        <label class="form-label mt-2 fw-bold text-secondary">📂 새 파일 추가</label>
+        <div id="newFiles{{ loop.index0 }}">
+          <input type="file" name="new_files" class="form-control mb-1">
         </div>
+        <button type="button" class="btn btn-outline-primary btn-sm mt-1" onclick="addNewFile('{{ loop.index0 }}')">＋ 파일 추가</button>
 
-        <button type="submit" class="btn btn-success w-100">💾 저장</button>
+        <input type="text" name="links" class="form-control mt-2" value="{{ lec.links }}">
+        <button class="btn btn-sm btn-success w-100 mt-2">💾 저장</button>
       </form>
     </div>
-    {% endif %}
   </div>
   {% endfor %}
-</div>
+{% else %}
+  <p class="text-muted">등록된 자료가 없습니다.</p>
+{% endif %}
 
-
-<!-- 📜 스크립트 -->
+<!-- ✅ 스크립트 -->
 <script>
-function addFileField() {
-  const div = document.getElementById("fileInputs");
-  const input = document.createElement("input");
-  input.type = "file";
-  input.name = "files";
-  input.multiple = true;
-  input.className = "form-control mb-2";
-  div.appendChild(input);
+function addFileInput() {
+  const div = document.createElement('div');
+  div.innerHTML = '<input type="file" name="files" class="form-control mb-1">';
+  document.getElementById('fileInputs').appendChild(div);
 }
-
-function removeFileField() {
-  const div = document.getElementById("fileInputs");
+function removeFileInput() {
+  const div = document.getElementById('fileInputs');
   if (div.children.length > 1) div.removeChild(div.lastChild);
 }
-
-function addLinkField() {
-  const div = document.getElementById("linkInputs");
-  const input = document.createElement("input");
-  input.type = "url";
-  input.name = "link" + (div.children.length + 1);
-  input.placeholder = "https://example.com";
-  input.className = "form-control mb-2";
-  div.appendChild(input);
+function addLinkInput() {
+  const div = document.createElement('div');
+  div.innerHTML = '<input type="text" name="link" class="form-control mb-1" placeholder="https:// 추가 링크">';
+  document.getElementById('linkInputs').appendChild(div);
 }
-
-function removeLinkField() {
-  const div = document.getElementById("linkInputs");
+function removeLinkInput() {
+  const div = document.getElementById('linkInputs');
   if (div.children.length > 1) div.removeChild(div.lastChild);
 }
+function addNewFile(idx) {
+  const div = document.getElementById(`newFiles${idx}`);
+  const newInput = document.createElement('input');
+  newInput.type = 'file';
+  newInput.name = 'new_files';
+  newInput.className = 'form-control mb-1';
+  div.appendChild(newInput);
+}
 
-/* ✅ 기존 파일 삭제 기능 */
+/* ✅ 🗑 삭제 기능 (서버 반영됨) */
 function removeExistingFile(idx, filename) {
   const container = document.getElementById(`currentFiles${idx}`);
   for (const child of container.children) {
@@ -169,20 +152,9 @@ function removeExistingFile(idx, filename) {
   }
   input.value = current.join(";");
 }
-
-/* ✅ 수정 시 새 파일 추가 (삭제 버튼 없음) */
-function addNewFileField() {
-  const activeForm = document.querySelector('.collapse.show');
-  if (activeForm) {
-    const newInput = document.createElement('input');
-    newInput.type = 'file';
-    newInput.name = 'new_files';
-    newInput.multiple = true;
-    newInput.className = 'form-control mb-2';
-    activeForm.querySelector('.mb-2:last-of-type').after(newInput);
-  }
-}
 </script>
+
 {% endblock %}
+
 
 
