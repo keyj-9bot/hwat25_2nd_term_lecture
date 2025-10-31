@@ -94,6 +94,13 @@
         <textarea name="content" class="form-control mb-1">{{ lec.content }}</textarea>
         <input type="file" name="files" multiple class="form-control mb-1">
         <input type="text" name="links" class="form-control mb-1" value="{{ lec.links }}">
+
+        <!-- ✅ 추가된 2줄 (기존파일 삭제 + 새 파일 업로드) -->
+        <p class="mt-2">현재 파일: <span class="text-primary">{{ lec.files or '없음' }}</span></p>
+        <button type="submit" name="delete_file" value="1" class="btn btn-outline-danger btn-sm mb-2">기존 파일 삭제</button>
+        <label class="mt-1 small">새 파일 업로드:</label>
+        <input type="file" name="new_file" class="form-control form-control-sm mb-2">
+
         <button class="btn btn-sm btn-success w-100">💾 저장</button>
       </form>
     </div>
@@ -129,6 +136,7 @@ function removeLinkInput() {
 </script>
 
 {% endblock %}
+
 
 
 

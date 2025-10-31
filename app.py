@@ -34,7 +34,6 @@ ALLOWED_EMAILS = "allowed_emails.txt"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-
 # ───────────── CSV 로드/저장 ─────────────
 def load_csv(path, cols):
     """CSV 안전 로드 (자동 인코딩 감지)"""
@@ -221,26 +220,31 @@ def edit_lecture(index):
         content = request.form.get("content", lec["content"])
         links = request.form.get("links", lec["links"])
 
-        # 파일 재업로드 (선택 시 교체)
-        file_names = str(lec["files"]) if pd.notna(lec["files"]) else ""
-        if "files" in request.files:
-            files = request.files.getlist("files")
-            if files and files[0].filename:
-                file_names = []
-                for f in files:
-                    safe_name = secure_filename(f.filename)
-                    f.save(os.path.join(UPLOAD_FOLDER, safe_name))
-                    file_names.append(safe_name)
-                file_names = ";".join(file_names)
+        # 🔹 기존 파일 삭제 (선택 시)
+        if request.form.get("delete_file") == "1" and lec.get("files"):
+            old_files = str(lec["files"]).split(";")
+            for f in old_files:
+                old_path = os.path.join(UPLOAD_FOLDER, f)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            lec["files"] = ""
+
+        # 🔹 새 파일 업로드 (선택 시 교체)
+        if "new_file" in request.files:
+            new_file = request.files["new_file"]
+            if new_file and new_file.filename:
+                fname = secure_filename(new_file.filename)
+                new_file.save(os.path.join(UPLOAD_FOLDER, fname))
+                lec["files"] = fname
 
         df.at[index, "title"] = title
         df.at[index, "content"] = content
         df.at[index, "links"] = links
-        df.at[index, "files"] = file_names
+        df.at[index, "files"] = lec["files"]
         save_csv(DATA_UPLOADS, df)
 
-        print(f"[EDIT] '{title}' 수정 완료 / 파일: {file_names}")
         flash("📘 강의자료가 수정되었습니다.", "success")
+        print(f"[EDIT] '{title}' 수정 완료 / 파일: {lec['files']}")
 
     return redirect(url_for("upload_lecture"))
 
@@ -296,6 +300,7 @@ def delete_confirmed(index):
         save_csv(DATA_POSTS, df_posts)
         flash("게시된 자료가 삭제되었습니다.", "info")
     return redirect(url_for("lecture"))
+
 
 
 # ───────────── Q&A 질문 등록/수정/삭제 ─────────────
@@ -452,5 +457,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     print(f"✅ Server running on port {port}")
     app.run(host="0.0.0.0", port=port)
-
 
