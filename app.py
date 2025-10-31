@@ -79,6 +79,11 @@ def index():
 
 @app.route("/lecture")
 def lecture():
+    # ✅ 로그인 세션 확인 (없으면 로그인 페이지로 이동)
+    if "user" not in session:
+        flash("🔒 로그인 후 이용 가능합니다.", "warning")
+        return redirect(url_for("login"))
+
     df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
     df_posts = df_posts.fillna('')
     today = datetime.now()
@@ -110,6 +115,7 @@ def lecture():
         questions=df_questions.to_dict("records"),
         comments=df_comments.to_dict("records"),
     )
+
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -154,6 +160,15 @@ def logout():
 # ───────────── 교수용 업로드 ─────────────
 @app.route("/upload_lecture", methods=["GET", "POST"])
 def upload_lecture():
+    # ✅ 로그인 및 교수 계정 확인
+    email = session.get("email")
+    if not email:
+        flash("🔒 로그인 후 이용 가능합니다.", "warning")
+        return redirect(url_for("login"))
+    if email != get_professor_email():
+        flash("⚠️ 교수 전용 페이지입니다.", "danger")
+        return redirect(url_for("lecture"))
+
     df = load_csv(DATA_UPLOADS, ["title", "content", "files", "links", "date", "confirmed"]).fillna('')
 
     if request.method == "POST":
@@ -185,14 +200,18 @@ def upload_lecture():
                 "date": date,
                 "confirmed": confirmed,
             }
+
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             save_csv(DATA_UPLOADS, df)
             flash("자료가 성공적으로 업로드되었습니다.", "success")
+
         except Exception as e:
             print(f"[UPLOAD ERROR] {e}")
             flash("업로드 중 오류가 발생했습니다.", "danger")
+
         return redirect(url_for("upload_lecture"))
 
+    # ✅ 게시된 자료 목록도 함께 로드
     df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
     return render_template("upload_lecture.html", lectures=df.to_dict("records"), post_titles=df_posts["title"].tolist())
 
@@ -452,11 +471,19 @@ def delete_comment(q_id, c_idx):
 # ───────────── 데이터 확인용 (교수 전용) ─────────────
 @app.route("/check_data")
 def check_data():
-    email = session.get("email", "")
+    email = session.get("email")
+
+    # ✅ 로그인 여부 확인
+    if not email:
+        flash("🔒 로그인 후 이용 가능합니다.", "warning")
+        return redirect(url_for("login"))
+
+    # ✅ 교수 전용 접근 제한
     if email != get_professor_email():
-        flash("접근 권한이 없습니다. 교수님 계정으로 로그인하세요.", "danger")
+        flash("🚫 접근 권한이 없습니다. 교수님 계정으로 로그인하세요.", "danger")
         return redirect(url_for("home"))
 
+    # ✅ 데이터 디렉터리 탐색
     data_dir = "/data"
     file_info = []
 
@@ -473,6 +500,7 @@ def check_data():
 
     file_info = sorted(file_info, key=lambda x: x["name"])
     return render_template("check_data.html", files=file_info)
+
 
 
 # ───────────── Health Check ─────────────
