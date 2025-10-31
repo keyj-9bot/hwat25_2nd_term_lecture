@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -17,10 +17,13 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
 
-        {# 📘 교수 계정일 경우에만 강의자료 업로드 버튼 표시 #}
+        {# 📘 교수 계정일 경우에만 표시되는 메뉴들 #}
         {% if is_professor %}
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('upload_lecture') }}">📤 강의자료 업로드</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-warning fw-bold" href="{{ url_for('check_data') }}">📂 데이터 확인</a>
         </li>
         {% endif %}
 
@@ -54,6 +57,4 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
-
 
