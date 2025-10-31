@@ -12,8 +12,7 @@
     <input type="file" name="files" class="form-control mb-1">
   </div>
   <div class="d-flex mb-3">
-    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="addFileInput()">＋ 파일 추가</button>
-    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFileInput()">－ 파일 삭제</button>
+    <button type="button" class="btn btn-outline-primary btn-sm" onclick="addFileInput()">＋ 파일 추가</button>
   </div>
 
   <!-- 🔗 링크 입력 -->
@@ -58,12 +57,21 @@
     <small class="text-muted">업로드: {{ lec.date or '시간 미기록' }}</small>
 
     <div class="mt-2">
+      <!-- ✅ 게시 상태 버튼 -->
       <form action="{{ url_for('confirm_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
-        <button class="btn btn-sm btn-outline-success">📢 게시</button>
+        {% if lec.confirmed == 'yes' %}
+          <button class="btn btn-sm btn-success" disabled>✅ 게시 완료</button>
+        {% elif lec.confirmed == 'no' %}
+          <button class="btn btn-sm btn-outline-success">🔄 재게시</button>
+        {% else %}
+          <button class="btn btn-sm btn-outline-success">📢 게시</button>
+        {% endif %}
       </form>
+
       <form action="{{ url_for('delete_lecture', index=loop.index0) }}" method="POST" style="display:inline;">
         <button class="btn btn-sm btn-outline-danger">🗑 삭제</button>
       </form>
+
       <button class="btn btn-sm btn-outline-warning" type="button" data-bs-toggle="collapse" data-bs-target="#edit{{ loop.index0 }}">✏ 수정</button>
     </div>
 
@@ -80,7 +88,7 @@
             {% for f in (lec.files or '').split(';') if f.strip() %}
               <div class="d-flex align-items-center mb-1">
                 <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank" class="me-2">{{ f.strip() }}</a>
-                <!-- 🗑 삭제 버튼 -->
+                <!-- 🗑 개별 삭제 버튼 -->
                 <button type="button"
                         class="btn btn-outline-danger btn-sm py-0 px-1"
                         onclick="removeExistingFile('{{ loop.index0 }}', '{{ f.strip() }}')">🗑</button>
@@ -114,19 +122,18 @@ function addFileInput() {
   div.innerHTML = '<input type="file" name="files" class="form-control mb-1">';
   document.getElementById('fileInputs').appendChild(div);
 }
-function removeFileInput() {
-  const div = document.getElementById('fileInputs');
-  if (div.children.length > 1) div.removeChild(div.lastChild);
-}
+
 function addLinkInput() {
   const div = document.createElement('div');
   div.innerHTML = '<input type="text" name="link" class="form-control mb-1" placeholder="https:// 추가 링크">';
   document.getElementById('linkInputs').appendChild(div);
 }
+
 function removeLinkInput() {
   const div = document.getElementById('linkInputs');
   if (div.children.length > 1) div.removeChild(div.lastChild);
 }
+
 function addNewFile(idx) {
   const div = document.getElementById(`newFiles${idx}`);
   const newInput = document.createElement('input');
@@ -153,7 +160,6 @@ function removeExistingFile(idx, filename) {
   input.value = current.join(";");
 }
 </script>
-
 {% endblock %}
 
 

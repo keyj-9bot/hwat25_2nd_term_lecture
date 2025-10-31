@@ -260,16 +260,24 @@ def uploaded_file(filename):
 def confirm_lecture(index):
     df_uploads = load_csv(DATA_UPLOADS, ["title", "content", "files", "links", "date", "confirmed"])
     df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
+
     if 0 <= index < len(df_uploads):
         row = df_uploads.iloc[index]
         row["confirmed"] = "yes"
-        if not ((df_posts["title"] == row["title"]) & (df_posts["date"] == row["date"])).any():
+
+        # 게시물 중복 방지 후 추가
+        exists = (df_posts["title"] == row["title"]) & (df_posts["date"] == row["date"])
+        if not exists.any():
             df_posts = pd.concat([df_posts, pd.DataFrame([row])], ignore_index=True)
             save_csv(DATA_POSTS, df_posts)
+
+        # 업로드 목록에도 게시 완료 상태 반영
         df_uploads.at[index, "confirmed"] = "yes"
         save_csv(DATA_UPLOADS, df_uploads)
+
         flash("📢 학습사이트에 게시되었습니다.", "success")
     return redirect(url_for("upload_lecture"))
+
 
 
 
@@ -293,11 +301,28 @@ def delete_confirmed(index):
         return redirect(url_for("lecture"))
 
     df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
+    df_uploads = load_csv(DATA_UPLOADS, ["title", "content", "files", "links", "date", "confirmed"])
+
     if 0 <= index < len(df_posts):
+        row = df_posts.iloc[index]
+        title = str(row["title"]).strip()
+        date = str(row["date"]).strip()
+
+        # 게시자료 삭제
         df_posts = df_posts.drop(index=index).reset_index(drop=True)
         save_csv(DATA_POSTS, df_posts)
         flash("게시된 자료가 삭제되었습니다.", "info")
+
+        # ✅ 업로드 목록 상태 변경 → 재게시 표시
+        for i in range(len(df_uploads)):
+            if str(df_uploads.at[i, "title"]).strip() == title and str(df_uploads.at[i, "date"]).strip() == date:
+                df_uploads.at[i, "confirmed"] = "no"
+                break
+
+        save_csv(DATA_UPLOADS, df_uploads)
+
     return redirect(url_for("lecture"))
+
 
 
 
