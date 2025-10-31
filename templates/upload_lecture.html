@@ -97,7 +97,7 @@
           <div class="mb-1">
             <a href="{{ url_for('uploaded_file', filename=f.strip()) }}" target="_blank">{{ f.strip() }}</a>
             <button type="button" class="btn btn-sm btn-outline-danger ms-2"
-                    onclick="removeExistingFile({{ loop.index0 }}, '{{ f.strip() }}')">🗑 삭제</button>
+                    onclick="removeExistingFile({{ loop.index0 }}, '{{ f.strip() }}')">🗑</button>
           </div>
           {% endfor %}
         </div>
@@ -109,7 +109,7 @@
         <div class="mb-2">
           <input type="file" name="new_files" multiple class="form-control mb-2">
           <button type="button" class="btn btn-sm btn-primary" onclick="addNewFileField()">+ 파일 추가</button>
-          <!-- ❌ 불필요한 '파일 삭제' 버튼 제거 -->
+          <!-- ❌ '파일 삭제' 버튼 제거 -->
         </div>
 
         <button type="submit" class="btn btn-success w-100">💾 저장</button>
@@ -153,7 +153,7 @@ function removeLinkField() {
   if (div.children.length > 1) div.removeChild(div.lastChild);
 }
 
-/* ✅ 수정 중 기존 파일 삭제 반영 */
+/* ✅ 기존 파일 삭제 기능 */
 function removeExistingFile(idx, filename) {
   const container = document.getElementById(`currentFiles${idx}`);
   for (const child of container.children) {
@@ -170,16 +170,19 @@ function removeExistingFile(idx, filename) {
   input.value = current.join(";");
 }
 
-/* ✅ 수정 시 새 파일 추가 필드 (삭제 버튼 없음) */
+/* ✅ 수정 시 새 파일 추가 (삭제 버튼 없음) */
 function addNewFileField() {
-  const div = document.createElement("div");
-  div.innerHTML = `<input type="file" name="new_files" multiple class="form-control mb-2">`;
-  document.querySelectorAll('div[id^="editForm"]').forEach(form => {
-    if (form.classList.contains("show")) {
-      form.querySelector(".mb-2:last-of-type").after(div);
-    }
-  });
+  const activeForm = document.querySelector('.collapse.show');
+  if (activeForm) {
+    const newInput = document.createElement('input');
+    newInput.type = 'file';
+    newInput.name = 'new_files';
+    newInput.multiple = true;
+    newInput.className = 'form-control mb-2';
+    activeForm.querySelector('.mb-2:last-of-type').after(newInput);
+  }
 }
 </script>
 {% endblock %}
+
 
