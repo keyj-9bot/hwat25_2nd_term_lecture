@@ -79,10 +79,12 @@ def index():
 
 @app.route("/lecture")
 def lecture():
-    # ✅ 로그인 세션 확인 (없으면 로그인 페이지로 이동)
-    if "user" not in session:
+    # ✅ 로그인 세션 확인 (email 기반)
+    email = session.get("email")
+    if not email:
         flash("🔒 로그인 후 이용 가능합니다.", "warning")
         return redirect(url_for("login"))
+
 
     df_posts = load_csv(DATA_POSTS, ["title", "content", "files", "links", "date", "confirmed"])
     df_posts = df_posts.fillna('')
