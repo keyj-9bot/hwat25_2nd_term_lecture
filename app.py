@@ -264,6 +264,8 @@ def edit_lecture(index):
 
         # 🔹 데이터 반영
         df.loc[index, ["title", "content", "links", "files"]] = [str(title), str(content), str(links), lec["files"]]
+        df.at[index, "confirmed"] = "pending"   # ✅ 수정 시 상태를 게시 대기로 전환
+
         save_csv(DATA_UPLOADS, df)
         flash("📘 강의자료가 수정되었습니다.", "success")
         print(f"[EDIT] '{title}' 수정 완료 / 파일: {lec['files']}")
@@ -354,7 +356,8 @@ def delete_confirmed(index):
                 title.replace("(수정)", "").strip() == up_title or
                 (len(content) > 10 and content[:15] in up_content)
             ):
-                df_uploads.at[i, "confirmed"] = "retry"
+                df_uploads.at[i, "confirmed"] = "no"   # ✅ 게시자료 삭제 시 → 게시 확정으로 복귀
+
                 matched = True
                 print(f"[DELETE CONFIRMED] '{up_title}' 삭제됨 → 업로드 목록 상태 갱신 완료")
                 break
