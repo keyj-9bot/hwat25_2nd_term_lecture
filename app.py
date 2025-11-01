@@ -16,7 +16,7 @@ app.secret_key = "key_flask_secret"
 app.config.update(
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_SAMESITE="None",
-    PERMANENT_SESSION_LIFETIME=timedelta(hours=2),
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=4),
 )
 
 # ───────────── 설정 ─────────────
@@ -190,7 +190,8 @@ def upload_lecture():
                 for f in request.files.getlist("files"):
                     if f and f.filename:
                         fname = f.filename.replace(" ", "_").replace("/", "").replace("\\", "")
-                        f.save(os.path.join(UPLOAD_FOLDER, fname))
+                        f.save(os.path.join(UPLOAD_FOLDER, secure_filename(fname)))
+
                         file_names.append(fname)
             files_str = ";".join(file_names)
 
@@ -330,24 +331,39 @@ def delete_confirmed(index):
 
     if 0 <= index < len(df_posts):
         row = df_posts.iloc[index]
-        title = str(row["title"]).strip()
-        date = str(row["date"]).strip()
+        title = str(row.get("title", "")).strip()
+        content = str(row.get("content", "")).strip()
 
-        # 🔹 학습사이트 게시자료 삭제
+        # 게시자료 삭제
         df_posts = df_posts.drop(index=index).reset_index(drop=True)
         save_csv(DATA_POSTS, df_posts)
-        flash("게시된 자료가 학습사이트에서 삭제되었습니다.", "info")
+        flash("게시된 자료가 삭제되었습니다.", "info")
 
-        # 🔹 업로드 목록 상태 변경 → 재게시
+        # ✅ 업로드 목록 상태 변경 → 재게시 표시
+        matched = False
         for i in range(len(df_uploads)):
-            if str(df_uploads.at[i, "title"]).strip() == title and str(df_uploads.at[i, "date"]).strip() == date:
+            up_title = str(df_uploads.at[i, "title"]).strip()
+            up_content = str(df_uploads.at[i, "content"]).strip()
+
+            # 제목이 거의 같거나, 내용 일부가 일치하면 동일 자료로 간주
+            if (
+                up_title == title or
+                up_title.replace("(수정)", "").strip() == title or
+                title.replace("(수정)", "").strip() == up_title or
+                (len(content) > 10 and content[:15] in up_content)
+            ):
                 df_uploads.at[i, "confirmed"] = "retry"
-                print(f"[DELETE CONFIRMED] '{title}' 삭제됨 → 업로드 목록 상태 'retry'(재게시)로 변경 완료")
+                matched = True
+                print(f"[DELETE CONFIRMED] '{up_title}' 삭제됨 → 업로드 목록 상태 갱신 완료")
                 break
+
+        if not matched:
+            print(f"[WARN] 일치 항목 없음 → 제목 '{title}' / 내용 '{content[:20]}'")
 
         save_csv(DATA_UPLOADS, df_uploads)
 
     return redirect(url_for("lecture"))
+
 
 
 
