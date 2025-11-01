@@ -8,6 +8,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import pandas as pd
 import os
 from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename   # ✅ 추가
+
 
 app = Flask(__name__)
 app.secret_key = "key_flask_secret"
